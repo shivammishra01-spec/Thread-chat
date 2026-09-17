@@ -128,6 +128,73 @@
     cursor:pointer;
   }
   .google-btn:hover{ background:#f2f2f2; }
+
+  /* ---------- Username picker screen ---------- */
+  .username-hint{ font-size:12px; color: var(--ink-faint); margin: -10px 0 16px; }
+  .username-taken{ color:#f0a290; }
+  .username-ok{ color: var(--teal-bright); }
+
+  /* ---------- Add-contact modal ---------- */
+  .add-contact-btn{
+    width:40px; height:40px; flex-shrink:0;
+    border-radius:10px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    color: var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .add-contact-btn:hover{ border-color: var(--amber-dim); }
+  .add-contact-btn.notif-on{ color: var(--teal-bright); border-color: var(--teal); }
+  .search-wrap{ display:flex; gap:8px; align-items:center; }
+  .modal-overlay{
+    position:fixed; inset:0;
+    background: rgba(8,9,13,.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:60;
+    opacity:0; pointer-events:none;
+    transition: opacity .15s ease;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:auto; }
+  .modal{
+    width: min(340px, 90vw);
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding: 22px;
+    transform: translateY(8px) scale(.98);
+    transition: transform .15s ease;
+  }
+  .modal-overlay.open .modal{ transform: translateY(0) scale(1); }
+  .modal h3{ margin:0 0 4px; font-size:17px; font-weight:600; }
+  .modal-sub{ margin:0 0 16px; font-size:13px; color: var(--ink-dim); }
+  .modal-input{
+    width:100%;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding: 10px 12px;
+    color: var(--ink);
+    font-size:14px;
+    outline:none;
+    font-family:inherit;
+    margin-bottom:14px;
+  }
+  .modal-input:focus{ border-color: var(--amber-dim); }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; }
+  .modal-btn{
+    padding: 9px 16px;
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    border:none;
+    font-family:inherit;
+  }
+  .modal-btn.ghost{ background:none; color: var(--ink-dim); }
+  .modal-btn.ghost:hover{ color: var(--ink); }
+  .modal-btn.solid{ background: var(--amber); color:#221900; }
+  .modal-btn.solid:disabled{ opacity:.4; cursor:default; }
   .auth-tabs{
     display:flex; gap:6px;
     background: var(--panel-2);
@@ -371,6 +438,20 @@
   </div>
 </div>
 
+<div class="auth-screen" id="usernameScreen" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="brand-mark">T</div>Thread</div>
+    <p class="auth-sub">Pick a username — this is what friends will use to add you.</p>
+    <div class="auth-error" id="usernameError"></div>
+    <div class="auth-field">
+      <label>Username</label>
+      <input type="text" id="usernameInput" placeholder="e.g. shivam007" autocapitalize="none">
+    </div>
+    <p class="username-hint" id="usernameHint">Letters, numbers and underscores, at least 3 characters.</p>
+    <button class="auth-submit" id="usernameSubmit">Continue</button>
+  </div>
+</div>
+
 <div class="app" id="app" style="display:none;">
   <aside class="sidebar">
     <div class="sidebar-head">
@@ -379,16 +460,22 @@
         <button class="me-badge" id="meBadge" title="Account"></button>
         <div class="account-menu" id="accountMenu">
           <div class="account-menu-name" id="menuName"></div>
-          <div class="account-menu-email" id="menuEmail"></div>
+          <div class="account-menu-email" id="menuUsername"></div>
           <button class="signout-btn" id="signOutBtn">Sign out</button>
         </div>
       </div>
     </div>
     <div class="search-wrap">
-      <div class="search-box">
+      <div class="search-box" style="flex:1;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="searchInput" type="text" placeholder="Search people">
+        <input id="searchInput" type="text" placeholder="Search added contacts">
       </div>
+      <button class="add-contact-btn" id="notifyBtn" title="Enable notifications">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="add-contact-btn" id="openAddContactBtn" title="Add someone by username">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </div>
     <div class="filter-row" id="filterRow">
       <button class="filter-chip active" data-filter="all">All</button>
@@ -398,6 +485,18 @@
   </aside>
 
   <main class="chat" id="chatPane">
+    <div id="addContactOverlay" class="modal-overlay">
+      <div class="modal">
+        <h3>Add by username</h3>
+        <p class="modal-sub">Enter your friend's exact username to add them.</p>
+        <div class="auth-error" id="addContactError"></div>
+        <input class="modal-input" id="addContactInput" type="text" placeholder="e.g. shivam007" autocapitalize="none">
+        <div class="modal-actions">
+          <button class="modal-btn ghost" id="cancelAddContact">Cancel</button>
+          <button class="modal-btn solid" id="confirmAddContact">Add</button>
+        </div>
+      </div>
+    </div>
     <div class="empty-state" id="emptyState">
       <div class="brand-mark">T</div>
       <h2>Pick someone to message</h2>
@@ -513,8 +612,22 @@
   const meBadge = document.getElementById('meBadge');
   const accountMenu = document.getElementById('accountMenu');
   const menuName = document.getElementById('menuName');
-  const menuEmail = document.getElementById('menuEmail');
+  const menuUsername = document.getElementById('menuUsername');
   const signOutBtn = document.getElementById('signOutBtn');
+
+  const usernameScreen = document.getElementById('usernameScreen');
+  const usernameInput = document.getElementById('usernameInput');
+  const usernameError = document.getElementById('usernameError');
+  const usernameHint = document.getElementById('usernameHint');
+  const usernameSubmit = document.getElementById('usernameSubmit');
+
+  const openAddContactBtn = document.getElementById('openAddContactBtn');
+  const notifyBtn = document.getElementById('notifyBtn');
+  const addContactOverlay = document.getElementById('addContactOverlay');
+  const addContactInput = document.getElementById('addContactInput');
+  const addContactError = document.getElementById('addContactError');
+  const cancelAddContact = document.getElementById('cancelAddContact');
+  const confirmAddContact = document.getElementById('confirmAddContact');
 
   // ---------- Auth screen mode ----------
   let mode = 'signin';
@@ -549,11 +662,7 @@
           email: user.email || '',
           createdAt: FieldValue.serverTimestamp(),
           lastActive: FieldValue.serverTimestamp()
-        }, {merge:true}).then(() => {
-          authScreen.style.display = 'none';
-          app.style.display = 'grid';
-          startApp(user);
-        });
+        }, {merge:true}).then(() => routeAfterAuth(user));
       })
       .catch(err => showAuthError(err.message))
       .finally(() => { googleBtn.disabled = false; });
@@ -583,7 +692,7 @@
               createdAt: FieldValue.serverTimestamp(),
               lastActive: FieldValue.serverTimestamp()
             });
-          });
+          }).then(() => routeAfterAuth(cred.user));
         })
         .catch(err => { showAuthError(err.message); authSubmit.disabled = false; });
     } else {
@@ -597,14 +706,15 @@
   // ---------- App state ----------
   let myUid = null;
   let myProfile = null;
-  let users = {};            // uid -> {id, name, email, lastActive(ms)}
+  let users = {};            // contactUid -> {id, name, username, lastActive(ms)}
   let lastMessages = {};     // uid -> {text, senderId, atMs}
   let unsubMessageStubs = {};
+  let profileUnsubs = {};    // contactUid -> unsubscribe for their profile doc
   let currentChatUid = null;
   let currentChatUnsub = null;
   let filter = 'all';
   let query = '';
-  let usersUnsub = null;
+  let contactsUnsub = null;
   let statusTicker = null;
 
   // Safety net: if auth never resolves (e.g. a network/config issue),
@@ -631,74 +741,128 @@
     authLoading.style.display = 'none';
     if(user){
       myUid = user.uid;
-      db.collection('users').doc(user.uid).get().then(doc => {
-        if(doc.exists){
-          authScreen.style.display = 'none';
-          app.style.display = 'grid';
-          startApp(user);
-        } else {
-          // Signed in but no profile doc yet — treat as an in-progress signup.
-          app.style.display = 'none';
-          authScreen.style.display = 'flex';
-        }
-      }).catch(err => console.error('profile check failed', err));
+      routeAfterAuth(user);
     } else {
       myUid = null;
       stopApp();
       app.style.display = 'none';
+      usernameScreen.style.display = 'none';
       authScreen.style.display = 'flex';
       authSubmit.disabled = false;
       setMode('signin');
     }
   });
 
+  function routeAfterAuth(user){
+    return db.collection('users').doc(user.uid).get().then(doc => {
+      if(doc.exists && doc.data().username){
+        authScreen.style.display = 'none';
+        usernameScreen.style.display = 'none';
+        app.style.display = 'grid';
+        startApp(user, doc.data());
+      } else if(doc.exists){
+        authScreen.style.display = 'none';
+        app.style.display = 'none';
+        usernameScreen.style.display = 'flex';
+      } else {
+        app.style.display = 'none';
+        usernameScreen.style.display = 'none';
+        authScreen.style.display = 'flex';
+      }
+    }).catch(err => console.error('profile check failed', err));
+  }
+
+  // ---------- Username picker ----------
+  function validUsername(u){ return /^[a-z0-9_]{3,20}$/.test(u); }
+  usernameSubmit.addEventListener('click', () => {
+    const raw = usernameInput.value.trim().toLowerCase();
+    usernameError.classList.remove('show');
+    if(!validUsername(raw)){
+      usernameError.textContent = 'Use 3-20 letters, numbers or underscores only.';
+      usernameError.classList.add('show');
+      return;
+    }
+    usernameSubmit.disabled = true;
+    db.collection('usernames').doc(raw).set({ uid: myUid })
+      .then(() => {
+        return db.collection('users').doc(myUid).set({ username: raw }, {merge:true});
+      })
+      .then(() => {
+        return db.collection('users').doc(myUid).get();
+      })
+      .then(doc => {
+        usernameSubmit.disabled = false;
+        usernameScreen.style.display = 'none';
+        app.style.display = 'grid';
+        startApp(auth.currentUser, doc.data());
+      })
+      .catch(err => {
+        usernameSubmit.disabled = false;
+        if(err.code === 'permission-denied'){
+          usernameError.textContent = 'That username is already taken — try another.';
+        } else {
+          usernameError.textContent = err.message;
+        }
+        usernameError.classList.add('show');
+      });
+  });
+
   function stopApp(){
     appStarted = false;
-    if(usersUnsub) usersUnsub();
+    if(contactsUnsub) contactsUnsub();
     if(currentChatUnsub) currentChatUnsub();
     Object.values(unsubMessageStubs).forEach(fn => fn());
     unsubMessageStubs = {};
+    Object.values(profileUnsubs).forEach(fn => fn());
+    profileUnsubs = {};
     if(statusTicker) clearInterval(statusTicker);
     users = {}; lastMessages = {}; currentChatUid = null;
   }
 
   let appStarted = false;
-  function startApp(user){
+  function startApp(user, profileData){
     if(appStarted) return;
     appStarted = true;
-    myProfile = { name: user.displayName || user.email, email: user.email };
+    myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '' };
     meBadge.textContent = initials(myProfile.name);
     meBadge.style.background = colorFromString(user.uid);
     menuName.textContent = myProfile.name;
-    menuEmail.textContent = myProfile.email;
+    menuUsername.textContent = '@' + myProfile.username;
 
     // Presence: mark active now, then every 25s while open
     touchPresence();
     statusTicker = setInterval(() => { touchPresence(); renderList(); if(currentChatUid) renderHeadStatus(); }, 25000);
     document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') touchPresence(); });
 
-    // Live list of everyone
-    usersUnsub = db.collection('users').onSnapshot(snap => {
+    // Live list of contacts I've added
+    contactsUnsub = db.collection('users').doc(myUid).collection('contacts').onSnapshot(snap => {
       snap.docChanges().forEach(change => {
-        const uid = change.doc.id;
+        const contactUid = change.doc.id;
         if(change.type === 'removed'){
-          delete users[uid];
-          if(unsubMessageStubs[uid]){ unsubMessageStubs[uid](); delete unsubMessageStubs[uid]; }
+          delete users[contactUid];
+          if(profileUnsubs[contactUid]){ profileUnsubs[contactUid](); delete profileUnsubs[contactUid]; }
+          if(unsubMessageStubs[contactUid]){ unsubMessageStubs[contactUid](); delete unsubMessageStubs[contactUid]; }
+          renderList();
           return;
         }
-        const d = change.doc.data();
-        users[uid] = {
-          id: uid,
-          name: d.name || d.email || 'Someone',
-          email: d.email || '',
-          lastActive: d.lastActive && d.lastActive.toMillis ? d.lastActive.toMillis() : null
-        };
-        if(uid !== myUid && !unsubMessageStubs[uid]){
-          watchPreview(uid);
+        if(!profileUnsubs[contactUid]){
+          profileUnsubs[contactUid] = db.collection('users').doc(contactUid).onSnapshot(pdoc => {
+            if(pdoc.exists){
+              const d = pdoc.data();
+              users[contactUid] = {
+                id: contactUid,
+                name: d.name || d.username || 'Someone',
+                username: d.username || '',
+                lastActive: d.lastActive && d.lastActive.toMillis ? d.lastActive.toMillis() : null
+              };
+            }
+            renderList();
+          }, err => console.error('contact profile error', err));
+          watchPreview(contactUid);
         }
       });
       renderList();
-    }, err => console.error('users snapshot error', err));
+    }, err => console.error('contacts snapshot error', err));
   }
 
   function touchPresence(){
@@ -709,23 +873,61 @@
 
   function watchPreview(uid){
     const chatId = chatIdFor(myUid, uid);
+    let firstSnapshot = true;
     const unsub = db.collection('chats').doc(chatId).collection('messages')
       .orderBy('createdAt','desc').limit(1)
       .onSnapshot(snap => {
         if(!snap.empty){
           const doc = snap.docs[0];
           const d = doc.data();
-          lastMessages[uid] = {
+          const prev = lastMessages[uid];
+          const msg = {
             text: d.text,
             senderId: d.senderId,
             atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
           };
+          lastMessages[uid] = msg;
+          if(!firstSnapshot && (!prev || msg.atMs > prev.atMs)){
+            maybeNotify(uid, msg);
+          }
         } else {
           lastMessages[uid] = null;
         }
+        firstSnapshot = false;
         renderList();
       }, err => console.error('preview snapshot error', err));
     unsubMessageStubs[uid] = unsub;
+  }
+
+  // ---------- Browser notifications (works while the browser is open/backgrounded) ----------
+  function updateNotifyBtnState(){
+    if(!('Notification' in window)) { notifyBtn.style.display = 'none'; return; }
+    notifyBtn.classList.toggle('notif-on', Notification.permission === 'granted');
+  }
+  notifyBtn.addEventListener('click', () => {
+    if(!('Notification' in window)) return;
+    if(Notification.permission === 'granted'){
+      new Notification('Notifications are on', { body: "You'll be alerted here when the app is open." });
+      return;
+    }
+    Notification.requestPermission().then(() => updateNotifyBtnState());
+  });
+  updateNotifyBtnState();
+
+  function maybeNotify(contactUid, msg){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    if(msg.senderId === myUid) return;
+    if(currentChatUid === contactUid && document.visibilityState === 'visible') return;
+    const contact = users[contactUid];
+    const name = contact ? contact.name : 'New message';
+    try{
+      const notif = new Notification(name, { body: msg.text });
+      notif.onclick = () => {
+        window.focus();
+        openChat(contactUid);
+        notif.close();
+      };
+    } catch(e){ console.error('notification failed', e); }
   }
 
   function lastReadKey(uid){ return 'thread_lastread_' + myUid + '_' + uid; }
@@ -756,7 +958,7 @@
     });
 
     if(others.length === 0){
-      threadListEl.innerHTML = '<div class="empty-list">No one else has signed up yet. Share this app so others can join and you can message them here.</div>';
+      threadListEl.innerHTML = '<div class="empty-list">You haven\'t added anyone yet. Tap + above and enter a friend\'s username to add them.</div>';
       return;
     }
     if(filtered.length === 0){
@@ -912,6 +1114,59 @@
   });
   document.addEventListener('click', (e) => {
     if(!accountMenu.contains(e.target) && e.target !== meBadge) accountMenu.classList.remove('open');
+  });
+
+  // ---------- Add contact by username ----------
+  function openAddContact(){
+    addContactInput.value = '';
+    addContactError.classList.remove('show');
+    confirmAddContact.disabled = false;
+    addContactOverlay.classList.add('open');
+    setTimeout(() => addContactInput.focus(), 50);
+  }
+  function closeAddContact(){ addContactOverlay.classList.remove('open'); }
+
+  openAddContactBtn.addEventListener('click', openAddContact);
+  cancelAddContact.addEventListener('click', closeAddContact);
+  addContactOverlay.addEventListener('click', (e) => { if(e.target === addContactOverlay) closeAddContact(); });
+  addContactInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAddContact.click(); });
+
+  confirmAddContact.addEventListener('click', () => {
+    const uname = addContactInput.value.trim().toLowerCase();
+    addContactError.classList.remove('show');
+    if(!uname){ addContactError.textContent = 'Enter a username.'; addContactError.classList.add('show'); return; }
+    confirmAddContact.disabled = true;
+    db.collection('usernames').doc(uname).get()
+      .then(doc => {
+        if(!doc.exists){
+          addContactError.textContent = "No one has that username.";
+          addContactError.classList.add('show');
+          confirmAddContact.disabled = false;
+          return;
+        }
+        const theirUid = doc.data().uid;
+        if(theirUid === myUid){
+          addContactError.textContent = "That's your own username.";
+          addContactError.classList.add('show');
+          confirmAddContact.disabled = false;
+          return;
+        }
+        db.collection('users').doc(myUid).collection('contacts').doc(theirUid).set({
+          addedAt: FieldValue.serverTimestamp()
+        }).then(() => {
+          confirmAddContact.disabled = false;
+          closeAddContact();
+        }).catch(err => {
+          addContactError.textContent = err.message;
+          addContactError.classList.add('show');
+          confirmAddContact.disabled = false;
+        });
+      })
+      .catch(err => {
+        addContactError.textContent = err.message;
+        addContactError.classList.add('show');
+        confirmAddContact.disabled = false;
+      });
   });
 
 })();
