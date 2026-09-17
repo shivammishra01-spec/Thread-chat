@@ -106,6 +106,29 @@
     margin-top:10px;
   }
   .auth-create-btn:hover{ background: rgba(232,163,61,0.08); }
+  .auth-tabs{
+    display:flex; gap:6px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 18px;
+  }
+  .auth-tab{
+    flex:1;
+    background:none;
+    border:none;
+    color: var(--ink-dim);
+    font-size:13.5px;
+    font-weight:600;
+    padding: 8px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .auth-tab.active{ background: var(--amber); color:#221900; }
+  .phone-row{ display:flex; gap:8px; }
+  .phone-row input#phoneCountryCode{ width:64px; flex-shrink:0; text-align:center; }
+  .phone-row input#phoneNumber{ flex:1; }
   .auth-switch{
     text-align:center;
     margin-top:16px;
@@ -296,21 +319,65 @@
   <div class="auth-card">
     <div class="auth-brand"><div class="brand-mark">T</div>Thread</div>
     <p class="auth-sub" id="authSub">Sign in to message real people.</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabEmail" data-tab="email">Email</button>
+      <button class="auth-tab" id="tabPhone" data-tab="phone">Phone</button>
+    </div>
+
     <div class="auth-error" id="authError"></div>
-    <div class="auth-field" id="nameField" style="display:none;">
-      <label>Your name</label>
-      <input type="text" id="authName" placeholder="e.g. Sam Rivera">
+
+    <!-- Email sign-in / sign-up -->
+    <div id="emailPanel">
+      <div class="auth-field" id="nameField" style="display:none;">
+        <label>Your name</label>
+        <input type="text" id="authName" placeholder="e.g. Sam Rivera">
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="you@example.com">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="authPassword" placeholder="At least 6 characters">
+      </div>
+      <button class="auth-submit" id="authSubmit">Sign in</button>
+      <button class="auth-create-btn" id="authCreateBtn">Create new account</button>
     </div>
-    <div class="auth-field">
-      <label>Email</label>
-      <input type="email" id="authEmail" placeholder="you@example.com">
+
+    <!-- Phone sign-in -->
+    <div id="phonePanel" style="display:none;">
+      <div id="phoneStepNumber">
+        <div class="auth-field">
+          <label>Phone number</label>
+          <div class="phone-row">
+            <input type="text" id="phoneCountryCode" value="+91" maxlength="4">
+            <input type="tel" id="phoneNumber" placeholder="98765 43210">
+          </div>
+        </div>
+        <button class="auth-submit" id="sendCodeBtn">Send code</button>
+      </div>
+
+      <div id="phoneStepCode" style="display:none;">
+        <p class="auth-sub" style="margin-bottom:14px;">Enter the 6-digit code sent to <span id="sentToNumber"></span></p>
+        <div class="auth-field">
+          <label>Verification code</label>
+          <input type="tel" id="otpCode" placeholder="123456" maxlength="6">
+        </div>
+        <button class="auth-submit" id="verifyCodeBtn">Verify &amp; continue</button>
+        <button class="auth-create-btn" id="changeNumberBtn">Use a different number</button>
+      </div>
+
+      <div id="phoneStepName" style="display:none;">
+        <div class="auth-field">
+          <label>Your name</label>
+          <input type="text" id="phoneAuthName" placeholder="e.g. Sam Rivera">
+        </div>
+        <button class="auth-submit" id="finishPhoneSignupBtn">Continue</button>
+      </div>
     </div>
-    <div class="auth-field">
-      <label>Password</label>
-      <input type="password" id="authPassword" placeholder="At least 6 characters">
-    </div>
-    <button class="auth-submit" id="authSubmit">Sign in</button>
-    <button class="auth-create-btn" id="authCreateBtn">Create new account</button>
+
+    <div id="recaptcha-container"></div>
   </div>
 </div>
 
@@ -439,6 +506,22 @@
   const authPassword = document.getElementById('authPassword');
   const authSubmit = document.getElementById('authSubmit');
   const authCreateBtn = document.getElementById('authCreateBtn');
+  const tabEmail = document.getElementById('tabEmail');
+  const tabPhone = document.getElementById('tabPhone');
+  const emailPanel = document.getElementById('emailPanel');
+  const phonePanel = document.getElementById('phonePanel');
+  const phoneStepNumber = document.getElementById('phoneStepNumber');
+  const phoneStepCode = document.getElementById('phoneStepCode');
+  const phoneStepName = document.getElementById('phoneStepName');
+  const phoneCountryCode = document.getElementById('phoneCountryCode');
+  const phoneNumber = document.getElementById('phoneNumber');
+  const sendCodeBtn = document.getElementById('sendCodeBtn');
+  const otpCode = document.getElementById('otpCode');
+  const sentToNumber = document.getElementById('sentToNumber');
+  const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+  const changeNumberBtn = document.getElementById('changeNumberBtn');
+  const phoneAuthName = document.getElementById('phoneAuthName');
+  const finishPhoneSignupBtn = document.getElementById('finishPhoneSignupBtn');
 
   const app = document.getElementById('app');
   const threadListEl = document.getElementById('threadList');
@@ -477,6 +560,101 @@
     }
   }
   authCreateBtn.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
+
+  // ---------- Auth tabs (Email / Phone) ----------
+  function setAuthTab(tab){
+    authError.classList.remove('show');
+    if(tab === 'email'){
+      tabEmail.classList.add('active'); tabPhone.classList.remove('active');
+      emailPanel.style.display = 'block'; phonePanel.style.display = 'none';
+      setMode(mode);
+    } else {
+      tabPhone.classList.add('active'); tabEmail.classList.remove('active');
+      phonePanel.style.display = 'block'; emailPanel.style.display = 'none';
+      authSub.textContent = 'Sign in or sign up with your phone number.';
+      phoneStepNumber.style.display = 'block';
+      phoneStepCode.style.display = 'none';
+      phoneStepName.style.display = 'none';
+    }
+  }
+  tabEmail.addEventListener('click', () => setAuthTab('email'));
+  tabPhone.addEventListener('click', () => setAuthTab('phone'));
+
+  // ---------- Phone auth ----------
+  let recaptchaVerifier = null;
+  let confirmationResult = null;
+
+  function getRecaptcha(){
+    if(!recaptchaVerifier){
+      recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        size: 'invisible'
+      }, auth);
+    }
+    return recaptchaVerifier;
+  }
+
+  sendCodeBtn.addEventListener('click', () => {
+    const code = phoneCountryCode.value.trim();
+    const num = phoneNumber.value.trim().replace(/[\s-]/g, '');
+    if(!code.startsWith('+') || num.length < 6){
+      showAuthError('Enter a valid country code and phone number.');
+      return;
+    }
+    const fullNumber = code + num;
+    sendCodeBtn.disabled = true;
+    authError.classList.remove('show');
+    auth.signInWithPhoneNumber(fullNumber, getRecaptcha())
+      .then(result => {
+        confirmationResult = result;
+        sentToNumber.textContent = fullNumber;
+        phoneStepNumber.style.display = 'none';
+        phoneStepCode.style.display = 'block';
+        sendCodeBtn.disabled = false;
+      })
+      .catch(err => {
+        showAuthError(err.message);
+        sendCodeBtn.disabled = false;
+        if(recaptchaVerifier){ recaptchaVerifier.clear(); recaptchaVerifier = null; }
+      });
+  });
+
+  changeNumberBtn.addEventListener('click', () => {
+    phoneStepCode.style.display = 'none';
+    phoneStepNumber.style.display = 'block';
+    otpCode.value = '';
+    authError.classList.remove('show');
+  });
+
+  let pendingPhoneUid = null;
+  verifyCodeBtn.addEventListener('click', () => {
+    const code = otpCode.value.trim();
+    if(!code){ showAuthError('Enter the code you received.'); return; }
+    verifyCodeBtn.disabled = true;
+    confirmationResult.confirm(code)
+      .catch(err => { showAuthError(err.message); verifyCodeBtn.disabled = false; })
+      .then(() => { verifyCodeBtn.disabled = false; });
+    // onAuthStateChanged decides whether to show the app or ask for a name
+  });
+
+  finishPhoneSignupBtn.addEventListener('click', () => {
+    const name = phoneAuthName.value.trim();
+    if(!name){ showAuthError('Enter your name.'); return; }
+    finishPhoneSignupBtn.disabled = true;
+    const user = auth.currentUser;
+    user.updateProfile({displayName: name}).then(() => {
+      return db.collection('users').doc(user.uid).set({
+        name: name,
+        phone: user.phoneNumber || '',
+        createdAt: FieldValue.serverTimestamp(),
+        lastActive: FieldValue.serverTimestamp()
+      });
+    }).then(() => {
+      finishPhoneSignupBtn.disabled = false;
+      authScreen.style.display = 'none';
+      app.style.display = 'grid';
+      startApp(user);
+    }).catch(err => { showAuthError(err.message); finishPhoneSignupBtn.disabled = false; });
+  });
 
   function showAuthError(msg){
     authError.textContent = msg;
@@ -550,15 +728,31 @@
     authLoading.style.display = 'none';
     if(user){
       myUid = user.uid;
-      authScreen.style.display = 'none';
-      app.style.display = 'grid';
-      startApp(user);
+      db.collection('users').doc(user.uid).get().then(doc => {
+        if(doc.exists){
+          authScreen.style.display = 'none';
+          app.style.display = 'grid';
+          startApp(user);
+        } else {
+          // Signed in (e.g. via phone) but no profile yet — ask for a name first.
+          app.style.display = 'none';
+          authScreen.style.display = 'flex';
+          phonePanel.style.display = 'block';
+          emailPanel.style.display = 'none';
+          tabPhone.classList.add('active'); tabEmail.classList.remove('active');
+          phoneStepNumber.style.display = 'none';
+          phoneStepCode.style.display = 'none';
+          phoneStepName.style.display = 'block';
+          authSub.textContent = "Almost done — what's your name?";
+        }
+      }).catch(err => console.error('profile check failed', err));
     } else {
       myUid = null;
       stopApp();
       app.style.display = 'none';
       authScreen.style.display = 'flex';
       authSubmit.disabled = false;
+      setAuthTab('email');
       setMode('signin');
     }
   });
