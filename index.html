@@ -135,6 +135,23 @@
     cursor:pointer;
   }
   .google-btn:hover{ background:#f2f2f2; }
+  .saved-account-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 9px 10px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:8px;
+  }
+  .saved-account-row .avatar{ width:30px; height:30px; font-size:12px; flex-shrink:0; }
+  .saved-account-row .sa-email{ flex:1; min-width:0; font-size:13px; color: var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .saved-account-row button{
+    background: var(--amber); color:#221900; border:none;
+    border-radius:8px; padding: 6px 12px; font-size:12.5px; font-weight:700; cursor:pointer;
+  }
+  .saved-account-row .sa-remove{
+    background:none; color: var(--ink-faint); font-size:16px; padding: 2px 6px; font-weight:400;
+  }
 
   /* ---------- Username picker screen ---------- */
   .username-hint{ font-size:12px; color: var(--ink-faint); margin: -10px 0 16px; }
@@ -153,6 +170,28 @@
   }
   .add-contact-btn:hover{ border-color: var(--amber-dim); }
   .add-contact-btn.notif-on{ color: var(--teal-bright); border-color: var(--teal); }
+  .req-badge{
+    position:absolute; top:-5px; right:-5px;
+    min-width:16px; height:16px; padding:0 4px;
+    background: var(--danger); color:#fff;
+    border-radius:999px; font-size:10px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    border: 2px solid var(--panel);
+  }
+  .request-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:8px;
+  }
+  .request-row .avatar{ width:34px; height:34px; font-size:13px; flex-shrink:0; }
+  .request-row .req-name{ flex:1; min-width:0; font-size:13.5px; color: var(--ink); }
+  .request-row .req-name small{ display:block; color: var(--ink-faint); font-size:11.5px; font-weight:400; }
+  .request-row .req-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .request-row .req-accept{ background: var(--teal); color:#eafff7; border:none; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:700; cursor:pointer; }
+  .request-row .req-decline{ background:none; color: var(--ink-faint); border:1px solid var(--line); border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer; }
   .search-wrap{ display:flex; gap:8px; align-items:center; }
   .modal-overlay{
     position:fixed; inset:0;
@@ -442,6 +481,12 @@
       </svg>
       Continue with Google
     </button>
+
+    <div id="savedAccountsSection" style="display:none;">
+      <div class="auth-divider"><span>saved test accounts</span></div>
+      <div id="savedAccountsList"></div>
+    </div>
+    <button class="auth-create-btn" id="saveTestAccountBtn" style="margin-top:10px;">Save this login for quick switch</button>
   </div>
 </div>
 
@@ -480,6 +525,10 @@
       <button class="add-contact-btn" id="notifyBtn" title="Enable notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       </button>
+      <button class="add-contact-btn" id="openRequestsBtn" title="Contact requests" style="position:relative;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span id="requestsBadge" class="req-badge" style="display:none;">0</span>
+      </button>
       <button class="add-contact-btn" id="openAddContactBtn" title="Add someone by username">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
@@ -495,19 +544,29 @@
     <div id="addContactOverlay" class="modal-overlay">
       <div class="modal">
         <h3>Add by username</h3>
-        <p class="modal-sub">Enter your friend's exact username to add them.</p>
+        <p class="modal-sub">This sends a request — they'll need to accept it before you can message each other.</p>
         <div class="auth-error" id="addContactError"></div>
         <input class="modal-input" id="addContactInput" type="text" placeholder="e.g. shivam007" autocapitalize="none">
         <div class="modal-actions">
           <button class="modal-btn ghost" id="cancelAddContact">Cancel</button>
-          <button class="modal-btn solid" id="confirmAddContact">Add</button>
+          <button class="modal-btn solid" id="confirmAddContact">Send request</button>
+        </div>
+      </div>
+    </div>
+    <div id="requestsOverlay" class="modal-overlay">
+      <div class="modal">
+        <h3>Contact requests</h3>
+        <p class="modal-sub">People who want to add you. Accept to start messaging.</p>
+        <div id="requestsListEl"></div>
+        <div class="modal-actions">
+          <button class="modal-btn ghost" id="closeRequests">Close</button>
         </div>
       </div>
     </div>
     <div class="empty-state" id="emptyState">
       <div class="brand-mark">T</div>
       <h2>Pick someone to message</h2>
-      <p>Everyone who has signed up shows up on the left. Select a name to start a real conversation.</p>
+      <p>Add a friend by username, and once they accept, select their name here to start a real conversation.</p>
     </div>
 
     <div id="chatContent" style="display:none; flex-direction:column; height:100%;">
@@ -636,6 +695,12 @@
   const cancelAddContact = document.getElementById('cancelAddContact');
   const confirmAddContact = document.getElementById('confirmAddContact');
 
+  const openRequestsBtn = document.getElementById('openRequestsBtn');
+  const requestsBadge = document.getElementById('requestsBadge');
+  const requestsOverlay = document.getElementById('requestsOverlay');
+  const requestsListEl = document.getElementById('requestsListEl');
+  const closeRequests = document.getElementById('closeRequests');
+
   // ---------- Auth screen mode ----------
   let mode = 'signin';
   function setMode(m){
@@ -710,6 +775,61 @@
 
   signOutBtn.addEventListener('click', () => auth.signOut());
 
+  // ---------- Saved test accounts (local to this device, for quick switching while testing) ----------
+  const SAVED_ACC_KEY = 'thread_test_accounts';
+  function loadSavedAccounts(){
+    try { return JSON.parse(localStorage.getItem(SAVED_ACC_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function storeSavedAccounts(arr){
+    try { localStorage.setItem(SAVED_ACC_KEY, JSON.stringify(arr)); } catch(e){}
+  }
+  function renderSavedAccounts(){
+    const list = loadSavedAccounts();
+    const section = document.getElementById('savedAccountsSection');
+    const listEl = document.getElementById('savedAccountsList');
+    if(list.length === 0){ section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    listEl.innerHTML = '';
+    list.forEach((acc, i) => {
+      const row = document.createElement('div');
+      row.className = 'saved-account-row';
+      row.innerHTML = `
+        <div class="avatar" style="background:${colorFromString(acc.email)}">${initials(acc.email)}</div>
+        <div class="sa-email">${escapeHtml(acc.email)}</div>
+        <button class="sa-switch">Sign in</button>
+        <button class="sa-remove" title="Remove">&times;</button>
+      `;
+      row.querySelector('.sa-switch').addEventListener('click', () => {
+        authEmail.value = acc.email;
+        authPassword.value = acc.password;
+        setMode('signin');
+        authSubmit.click();
+      });
+      row.querySelector('.sa-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        storeSavedAccounts(loadSavedAccounts().filter((_, idx) => idx !== i));
+        renderSavedAccounts();
+      });
+      listEl.appendChild(row);
+    });
+  }
+  document.getElementById('saveTestAccountBtn').addEventListener('click', () => {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    authError.classList.remove('show');
+    if(!email || !password){
+      authError.textContent = 'Type an email and password above first, then save it.';
+      authError.classList.add('show');
+      return;
+    }
+    const list = loadSavedAccounts().filter(a => a.email !== email);
+    list.unshift({ email, password });
+    storeSavedAccounts(list.slice(0, 6));
+    renderSavedAccounts();
+  });
+  renderSavedAccounts();
+
   // ---------- App state ----------
   let myUid = null;
   let myProfile = null;
@@ -722,6 +842,8 @@
   let filter = 'all';
   let query = '';
   let contactsUnsub = null;
+  let requestsUnsub = null;
+  let incomingRequests = {}; // fromUid -> {fromUid, fromName, fromUsername}
   let statusTicker = null;
 
   // Safety net: if auth never resolves (e.g. a network/config issue),
@@ -817,13 +939,14 @@
   function stopApp(){
     appStarted = false;
     if(contactsUnsub) contactsUnsub();
+    if(requestsUnsub) requestsUnsub();
     if(currentChatUnsub) currentChatUnsub();
     Object.values(unsubMessageStubs).forEach(fn => fn());
     unsubMessageStubs = {};
     Object.values(profileUnsubs).forEach(fn => fn());
     profileUnsubs = {};
     if(statusTicker) clearInterval(statusTicker);
-    users = {}; lastMessages = {}; currentChatUid = null;
+    users = {}; lastMessages = {}; incomingRequests = {}; currentChatUid = null;
   }
 
   let appStarted = false;
@@ -870,6 +993,20 @@
       });
       renderList();
     }, err => console.error('contacts snapshot error', err));
+
+    // Live list of incoming contact requests
+    requestsUnsub = db.collection('users').doc(myUid).collection('incomingRequests').onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        const fromUid = change.doc.id;
+        if(change.type === 'removed'){
+          delete incomingRequests[fromUid];
+        } else {
+          const d = change.doc.data();
+          incomingRequests[fromUid] = { fromUid, fromName: d.fromName || 'Someone', fromUsername: d.fromUsername || '' };
+        }
+      });
+      renderRequests();
+    }, err => console.error('requests snapshot error', err));
   }
 
   function touchPresence(){
@@ -1158,8 +1295,11 @@
           confirmAddContact.disabled = false;
           return;
         }
-        db.collection('users').doc(myUid).collection('contacts').doc(theirUid).set({
-          addedAt: FieldValue.serverTimestamp()
+        db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set({
+          fromUid: myUid,
+          fromName: myProfile.name,
+          fromUsername: myProfile.username,
+          sentAt: FieldValue.serverTimestamp()
         }).then(() => {
           confirmAddContact.disabled = false;
           closeAddContact();
@@ -1175,6 +1315,55 @@
         confirmAddContact.disabled = false;
       });
   });
+
+  // ---------- Contact requests (accept/decline) ----------
+  function renderRequests(){
+    const ids = Object.keys(incomingRequests);
+    if(ids.length === 0){
+      requestsBadge.style.display = 'none';
+      requestsListEl.innerHTML = '<div class="empty-list">No pending requests.</div>';
+      return;
+    }
+    requestsBadge.style.display = 'flex';
+    requestsBadge.textContent = ids.length;
+    requestsListEl.innerHTML = '';
+    ids.forEach(fromUid => {
+      const r = incomingRequests[fromUid];
+      const row = document.createElement('div');
+      row.className = 'request-row';
+      row.innerHTML = `
+        <div class="avatar" style="background:${colorFromString(fromUid)}">${initials(r.fromName)}</div>
+        <div class="req-name">${escapeHtml(r.fromName)}<small>@${escapeHtml(r.fromUsername)}</small></div>
+        <div class="req-actions">
+          <button class="req-accept">Accept</button>
+          <button class="req-decline">Decline</button>
+        </div>
+      `;
+      row.querySelector('.req-accept').addEventListener('click', () => acceptRequest(fromUid));
+      row.querySelector('.req-decline').addEventListener('click', () => declineRequest(fromUid));
+      requestsListEl.appendChild(row);
+    });
+  }
+
+  function acceptRequest(fromUid){
+    const batch = db.batch();
+    const myContactRef = db.collection('users').doc(myUid).collection('contacts').doc(fromUid);
+    const theirContactRef = db.collection('users').doc(fromUid).collection('contacts').doc(myUid);
+    const reqRef = db.collection('users').doc(myUid).collection('incomingRequests').doc(fromUid);
+    batch.set(myContactRef, { addedAt: FieldValue.serverTimestamp() });
+    batch.set(theirContactRef, { addedAt: FieldValue.serverTimestamp() });
+    batch.delete(reqRef);
+    batch.commit().catch(err => console.error('accept request failed', err));
+  }
+
+  function declineRequest(fromUid){
+    db.collection('users').doc(myUid).collection('incomingRequests').doc(fromUid).delete()
+      .catch(err => console.error('decline request failed', err));
+  }
+
+  openRequestsBtn.addEventListener('click', () => { renderRequests(); requestsOverlay.classList.add('open'); });
+  closeRequests.addEventListener('click', () => requestsOverlay.classList.remove('open'));
+  requestsOverlay.addEventListener('click', (e) => { if(e.target === requestsOverlay) requestsOverlay.classList.remove('open'); });
 
 })();
 </script>
