@@ -34,6 +34,24 @@
     --sidebar-w: 340px;
   }
   *{ box-sizing:border-box; }
+  .update-banner{
+    position:fixed; left:0; right:0; top:0;
+    z-index:200;
+    background: var(--amber);
+    color:#221900;
+    display:none;
+    align-items:center; justify-content:center; gap:14px;
+    padding: 10px 16px;
+    font-size:13.5px; font-weight:600;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .update-banner.show{ display:flex; }
+  .update-banner button{
+    background:#221900; color: var(--amber);
+    border:none; border-radius:8px;
+    padding: 6px 14px; font-size:12.5px; font-weight:700;
+    cursor:pointer;
+  }
   html,body{ height:100%; }
   body{
     margin:0;
@@ -425,6 +443,7 @@
   }
   .chat-options-item:hover{ background: rgba(255,255,255,0.05); }
   .chat-options-item.danger{ color: var(--danger); }
+  .chat-options-divider{ height:1px; background: var(--line); margin: 5px 2px; }
 
   .messages{ flex:1; overflow-y:auto; padding: 22px 26px; display:flex; flex-direction:column; gap:3px; }
   .day-sep{ text-align:center; color: var(--ink-faint); font-size:11.5px; margin: 14px 0 18px; text-transform:uppercase; letter-spacing:.06em; }
@@ -477,6 +496,11 @@
 </style>
 </head>
 <body>
+
+<div class="update-banner" id="updateBanner">
+  <span>A new version is available.</span>
+  <button id="updateBannerBtn">Update</button>
+</div>
 
 <div class="auth-loading" id="authLoading">Loading…</div>
 
@@ -614,6 +638,10 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
           </button>
           <div class="chat-options-menu" id="chatOptionsMenu">
+            <button class="chat-options-item" id="muteContactBtn">Mute notifications</button>
+            <div class="chat-options-divider"></div>
+            <button class="chat-options-item danger" id="deleteConversationBtn">Delete conversation</button>
+            <button class="chat-options-item danger" id="blockContactBtn">Block contact</button>
             <button class="chat-options-item danger" id="removeContactBtn">Remove contact</button>
           </div>
         </div>
@@ -712,6 +740,9 @@
   const headStatus = document.getElementById('headStatus');
   const chatOptionsBtn = document.getElementById('chatOptionsBtn');
   const chatOptionsMenu = document.getElementById('chatOptionsMenu');
+  const muteContactBtn = document.getElementById('muteContactBtn');
+  const deleteConversationBtn = document.getElementById('deleteConversationBtn');
+  const blockContactBtn = document.getElementById('blockContactBtn');
   const removeContactBtn = document.getElementById('removeContactBtn');
   const composerInput = document.getElementById('composerInput');
   const sendBtn = document.getElementById('sendBtn');
@@ -885,6 +916,7 @@
   let contactsUnsub = null;
   let requestsUnsub = null;
   let incomingRequests = {}; // fromUid -> {fromUid, fromName, fromUsername}
+  let myContactMeta = {};    // contactUid -> {muted: bool}
   let statusTicker = null;
 
   // Safety net: if auth never resolves (e.g. a network/config issue),
@@ -987,7 +1019,7 @@
     Object.values(profileUnsubs).forEach(fn => fn());
     profileUnsubs = {};
     if(statusTicker) clearInterval(statusTicker);
-    users = {}; lastMessages = {}; incomingRequests = {}; currentChatUid = null;
+    users = {}; lastMessages = {}; incomingRequests = {}; myContactMeta = {}; currentChatUid = null;
   }
 
   let appStarted = false;
@@ -1011,11 +1043,15 @@
         const contactUid = change.doc.id;
         if(change.type === 'removed'){
           delete users[contactUid];
+          delete myContactMeta[contactUid];
           if(profileUnsubs[contactUid]){ profileUnsubs[contactUid](); delete profileUnsubs[contactUid]; }
           if(unsubMessageStubs[contactUid]){ unsubMessageStubs[contactUid](); delete unsubMessageStubs[contactUid]; }
           renderList();
           return;
         }
+        const cd = change.doc.data();
+        myContactMeta[contactUid] = { muted: !!cd.muted };
+        if(currentChatUid === contactUid) updateMuteBtnLabel();
         if(!profileUnsubs[contactUid]){
           profileUnsubs[contactUid] = db.collection('users').doc(contactUid).onSnapshot(pdoc => {
             if(pdoc.exists){
@@ -1102,6 +1138,7 @@
   function maybeNotify(contactUid, msg){
     if(!('Notification' in window) || Notification.permission !== 'granted') return;
     if(msg.senderId === myUid) return;
+    if(myContactMeta[contactUid] && myContactMeta[contactUid].muted) return;
     if(currentChatUid === contactUid && document.visibilityState === 'visible') return;
     const contact = users[contactUid];
     const name = contact ? contact.name : 'New message';
@@ -1189,6 +1226,7 @@
     headAvatar.textContent = initials(u.name);
     headName.textContent = u.name;
     renderHeadStatus();
+    updateMuteBtnLabel();
     renderList();
 
     if(currentChatUnsub) currentChatUnsub();
@@ -1406,7 +1444,22 @@
   closeRequests.addEventListener('click', () => requestsOverlay.classList.remove('open'));
   requestsOverlay.addEventListener('click', (e) => { if(e.target === requestsOverlay) requestsOverlay.classList.remove('open'); });
 
-  // ---------- Remove contact ----------
+  // ---------- Chat options: mute / delete / block / remove ----------
+  function updateMuteBtnLabel(){
+    if(!currentChatUid) return;
+    const muted = myContactMeta[currentChatUid] && myContactMeta[currentChatUid].muted;
+    muteContactBtn.textContent = muted ? 'Unmute notifications' : 'Mute notifications';
+  }
+
+  function closeCurrentChat(){
+    if(currentChatUnsub) currentChatUnsub();
+    currentChatUid = null;
+    app.classList.remove('has-selection');
+    app.classList.remove('chat-open');
+    chatContent.style.display = 'none';
+    emptyState.style.display = 'flex';
+  }
+
   chatOptionsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     chatOptionsMenu.classList.toggle('open');
@@ -1414,6 +1467,52 @@
   document.addEventListener('click', (e) => {
     if(!chatOptionsMenu.contains(e.target) && e.target !== chatOptionsBtn) chatOptionsMenu.classList.remove('open');
   });
+
+  muteContactBtn.addEventListener('click', () => {
+    if(!currentChatUid) return;
+    chatOptionsMenu.classList.remove('open');
+    const currentlyMuted = myContactMeta[currentChatUid] && myContactMeta[currentChatUid].muted;
+    db.collection('users').doc(myUid).collection('contacts').doc(currentChatUid)
+      .set({ muted: !currentlyMuted }, {merge:true})
+      .catch(err => console.error('mute toggle failed', err));
+  });
+
+  deleteConversationBtn.addEventListener('click', () => {
+    if(!currentChatUid) return;
+    chatOptionsMenu.classList.remove('open');
+    if(!confirm('Delete all messages in this conversation? This cannot be undone.')) return;
+    const chatId = chatIdFor(myUid, currentChatUid);
+    const msgsRef = db.collection('chats').doc(chatId).collection('messages');
+    msgsRef.get().then(snap => {
+      const docs = snap.docs;
+      const chunks = [];
+      for(let i = 0; i < docs.length; i += 450){ chunks.push(docs.slice(i, i+450)); }
+      return chunks.reduce((p, chunk) => p.then(() => {
+        const batch = db.batch();
+        chunk.forEach(d => batch.delete(d.ref));
+        return batch.commit();
+      }), Promise.resolve());
+    }).catch(err => console.error('delete conversation failed', err));
+  });
+
+  blockContactBtn.addEventListener('click', () => {
+    if(!currentChatUid) return;
+    const contact = users[currentChatUid];
+    const name = contact ? contact.name : 'this contact';
+    chatOptionsMenu.classList.remove('open');
+    if(!confirm('Block ' + name + '? They will no longer be able to message you, and they will be removed from your list.')) return;
+    const uidToBlock = currentChatUid;
+    db.collection('users').doc(myUid).collection('blocked').doc(uidToBlock).set({
+      blockedAt: FieldValue.serverTimestamp()
+    }).then(() => {
+      return db.collection('users').doc(myUid).collection('contacts').doc(uidToBlock).delete();
+    }).then(() => {
+      return db.collection('users').doc(myUid).collection('incomingRequests').doc(uidToBlock).delete().catch(() => {});
+    }).then(() => {
+      closeCurrentChat();
+    }).catch(err => console.error('block contact failed', err));
+  });
+
   removeContactBtn.addEventListener('click', () => {
     if(!currentChatUid) return;
     const contact = users[currentChatUid];
@@ -1422,14 +1521,7 @@
     if(!confirm('Remove ' + name + '? Your message history stays if you add them again.')) return;
     const uidToRemove = currentChatUid;
     db.collection('users').doc(myUid).collection('contacts').doc(uidToRemove).delete()
-      .then(() => {
-        if(currentChatUnsub) currentChatUnsub();
-        currentChatUid = null;
-        app.classList.remove('has-selection');
-        app.classList.remove('chat-open');
-        chatContent.style.display = 'none';
-        emptyState.style.display = 'flex';
-      })
+      .then(() => closeCurrentChat())
       .catch(err => console.error('remove contact failed', err));
   });
 
