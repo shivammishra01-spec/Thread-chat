@@ -93,6 +93,19 @@
     margin-top:6px;
   }
   .auth-submit:disabled{ opacity:.5; cursor:default; }
+  .auth-create-btn{
+    width:100%;
+    background:none;
+    color: var(--amber);
+    border:1px solid var(--amber-dim);
+    border-radius:10px;
+    padding: 12px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:10px;
+  }
+  .auth-create-btn:hover{ background: rgba(232,163,61,0.08); }
   .auth-switch{
     text-align:center;
     margin-top:16px;
@@ -297,10 +310,7 @@
       <input type="password" id="authPassword" placeholder="At least 6 characters">
     </div>
     <button class="auth-submit" id="authSubmit">Sign in</button>
-    <div class="auth-switch">
-      <span id="authSwitchText">Don't have an account?</span>
-      <button id="authSwitchBtn">Sign up</button>
-    </div>
+    <button class="auth-create-btn" id="authCreateBtn">Create new account</button>
   </div>
 </div>
 
@@ -428,8 +438,7 @@
   const authEmail = document.getElementById('authEmail');
   const authPassword = document.getElementById('authPassword');
   const authSubmit = document.getElementById('authSubmit');
-  const authSwitchText = document.getElementById('authSwitchText');
-  const authSwitchBtn = document.getElementById('authSwitchBtn');
+  const authCreateBtn = document.getElementById('authCreateBtn');
 
   const app = document.getElementById('app');
   const threadListEl = document.getElementById('threadList');
@@ -459,17 +468,15 @@
       authSub.textContent = 'Sign in to message real people.';
       nameField.style.display = 'none';
       authSubmit.textContent = 'Sign in';
-      authSwitchText.textContent = "Don't have an account?";
-      authSwitchBtn.textContent = 'Sign up';
+      authCreateBtn.textContent = 'Create new account';
     } else {
       authSub.textContent = 'Create an account to start chatting.';
       nameField.style.display = 'block';
       authSubmit.textContent = 'Sign up';
-      authSwitchText.textContent = 'Already have an account?';
-      authSwitchBtn.textContent = 'Sign in';
+      authCreateBtn.textContent = 'Already have an account? Sign in';
     }
   }
-  authSwitchBtn.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
+  authCreateBtn.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
 
   function showAuthError(msg){
     authError.textContent = msg;
