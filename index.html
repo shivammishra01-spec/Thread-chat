@@ -106,6 +106,28 @@
     margin-top:10px;
   }
   .auth-create-btn:hover{ background: rgba(232,163,61,0.08); }
+  .auth-divider{
+    display:flex; align-items:center; gap:12px;
+    margin: 18px 0 14px;
+    color: var(--ink-faint);
+    font-size:12px;
+  }
+  .auth-divider::before, .auth-divider::after{
+    content:''; flex:1; height:1px; background: var(--line);
+  }
+  .google-btn{
+    width:100%;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff;
+    color:#1f1f1f;
+    border:none;
+    border-radius:10px;
+    padding: 11px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .google-btn:hover{ background:#f2f2f2; }
   .auth-tabs{
     display:flex; gap:6px;
     background: var(--panel-2);
@@ -320,64 +342,32 @@
     <div class="auth-brand"><div class="brand-mark">T</div>Thread</div>
     <p class="auth-sub" id="authSub">Sign in to message real people.</p>
 
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabEmail" data-tab="email">Email</button>
-      <button class="auth-tab" id="tabPhone" data-tab="phone">Phone</button>
-    </div>
-
     <div class="auth-error" id="authError"></div>
 
-    <!-- Email sign-in / sign-up -->
-    <div id="emailPanel">
-      <div class="auth-field" id="nameField" style="display:none;">
-        <label>Your name</label>
-        <input type="text" id="authName" placeholder="e.g. Sam Rivera">
-      </div>
-      <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="authEmail" placeholder="you@example.com">
-      </div>
-      <div class="auth-field">
-        <label>Password</label>
-        <input type="password" id="authPassword" placeholder="At least 6 characters">
-      </div>
-      <button class="auth-submit" id="authSubmit">Sign in</button>
-      <button class="auth-create-btn" id="authCreateBtn">Create new account</button>
+    <div class="auth-field" id="nameField" style="display:none;">
+      <label>Your name</label>
+      <input type="text" id="authName" placeholder="e.g. Sam Rivera">
     </div>
-
-    <!-- Phone sign-in -->
-    <div id="phonePanel" style="display:none;">
-      <div id="phoneStepNumber">
-        <div class="auth-field">
-          <label>Phone number</label>
-          <div class="phone-row">
-            <input type="text" id="phoneCountryCode" value="+91" maxlength="4">
-            <input type="tel" id="phoneNumber" placeholder="98765 43210">
-          </div>
-        </div>
-        <button class="auth-submit" id="sendCodeBtn">Send code</button>
-      </div>
-
-      <div id="phoneStepCode" style="display:none;">
-        <p class="auth-sub" style="margin-bottom:14px;">Enter the 6-digit code sent to <span id="sentToNumber"></span></p>
-        <div class="auth-field">
-          <label>Verification code</label>
-          <input type="tel" id="otpCode" placeholder="123456" maxlength="6">
-        </div>
-        <button class="auth-submit" id="verifyCodeBtn">Verify &amp; continue</button>
-        <button class="auth-create-btn" id="changeNumberBtn">Use a different number</button>
-      </div>
-
-      <div id="phoneStepName" style="display:none;">
-        <div class="auth-field">
-          <label>Your name</label>
-          <input type="text" id="phoneAuthName" placeholder="e.g. Sam Rivera">
-        </div>
-        <button class="auth-submit" id="finishPhoneSignupBtn">Continue</button>
-      </div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com">
     </div>
-
-    <div id="recaptcha-container"></div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="authPassword" placeholder="At least 6 characters">
+    </div>
+    <button class="auth-submit" id="authSubmit">Sign in</button>
+    <button class="auth-create-btn" id="authCreateBtn">Create new account</button>
+    <div class="auth-divider"><span>or</span></div>
+    <button class="google-btn" id="googleBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.3-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 16 4 9.1 8.6 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.4C29.6 35.5 26.9 36.5 24 36.5c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.1 39.4 16 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.6 5.4C41.5 36.1 44 30.6 44 24c0-1.2-.1-2.3-.4-3.5z"/>
+      </svg>
+      Continue with Google
+    </button>
   </div>
 </div>
 
@@ -506,22 +496,6 @@
   const authPassword = document.getElementById('authPassword');
   const authSubmit = document.getElementById('authSubmit');
   const authCreateBtn = document.getElementById('authCreateBtn');
-  const tabEmail = document.getElementById('tabEmail');
-  const tabPhone = document.getElementById('tabPhone');
-  const emailPanel = document.getElementById('emailPanel');
-  const phonePanel = document.getElementById('phonePanel');
-  const phoneStepNumber = document.getElementById('phoneStepNumber');
-  const phoneStepCode = document.getElementById('phoneStepCode');
-  const phoneStepName = document.getElementById('phoneStepName');
-  const phoneCountryCode = document.getElementById('phoneCountryCode');
-  const phoneNumber = document.getElementById('phoneNumber');
-  const sendCodeBtn = document.getElementById('sendCodeBtn');
-  const otpCode = document.getElementById('otpCode');
-  const sentToNumber = document.getElementById('sentToNumber');
-  const verifyCodeBtn = document.getElementById('verifyCodeBtn');
-  const changeNumberBtn = document.getElementById('changeNumberBtn');
-  const phoneAuthName = document.getElementById('phoneAuthName');
-  const finishPhoneSignupBtn = document.getElementById('finishPhoneSignupBtn');
 
   const app = document.getElementById('app');
   const threadListEl = document.getElementById('threadList');
@@ -561,99 +535,28 @@
   }
   authCreateBtn.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
 
-  // ---------- Auth tabs (Email / Phone) ----------
-  function setAuthTab(tab){
+  // ---------- Google sign-in ----------
+  const googleBtn = document.getElementById('googleBtn');
+  googleBtn.addEventListener('click', () => {
     authError.classList.remove('show');
-    if(tab === 'email'){
-      tabEmail.classList.add('active'); tabPhone.classList.remove('active');
-      emailPanel.style.display = 'block'; phonePanel.style.display = 'none';
-      setMode(mode);
-    } else {
-      tabPhone.classList.add('active'); tabEmail.classList.remove('active');
-      phonePanel.style.display = 'block'; emailPanel.style.display = 'none';
-      authSub.textContent = 'Sign in or sign up with your phone number.';
-      phoneStepNumber.style.display = 'block';
-      phoneStepCode.style.display = 'none';
-      phoneStepName.style.display = 'none';
-    }
-  }
-  tabEmail.addEventListener('click', () => setAuthTab('email'));
-  tabPhone.addEventListener('click', () => setAuthTab('phone'));
-
-  // ---------- Phone auth ----------
-  let recaptchaVerifier = null;
-  let confirmationResult = null;
-
-  function getRecaptcha(){
-    if(!recaptchaVerifier){
-      recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-        size: 'invisible'
-      }, auth);
-    }
-    return recaptchaVerifier;
-  }
-
-  sendCodeBtn.addEventListener('click', () => {
-    const code = phoneCountryCode.value.trim();
-    const num = phoneNumber.value.trim().replace(/[\s-]/g, '');
-    if(!code.startsWith('+') || num.length < 6){
-      showAuthError('Enter a valid country code and phone number.');
-      return;
-    }
-    const fullNumber = code + num;
-    sendCodeBtn.disabled = true;
-    authError.classList.remove('show');
-    auth.signInWithPhoneNumber(fullNumber, getRecaptcha())
+    googleBtn.disabled = true;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
       .then(result => {
-        confirmationResult = result;
-        sentToNumber.textContent = fullNumber;
-        phoneStepNumber.style.display = 'none';
-        phoneStepCode.style.display = 'block';
-        sendCodeBtn.disabled = false;
+        const user = result.user;
+        return db.collection('users').doc(user.uid).set({
+          name: user.displayName || user.email || 'Someone',
+          email: user.email || '',
+          createdAt: FieldValue.serverTimestamp(),
+          lastActive: FieldValue.serverTimestamp()
+        }, {merge:true}).then(() => {
+          authScreen.style.display = 'none';
+          app.style.display = 'grid';
+          startApp(user);
+        });
       })
-      .catch(err => {
-        showAuthError(err.message);
-        sendCodeBtn.disabled = false;
-        if(recaptchaVerifier){ recaptchaVerifier.clear(); recaptchaVerifier = null; }
-      });
-  });
-
-  changeNumberBtn.addEventListener('click', () => {
-    phoneStepCode.style.display = 'none';
-    phoneStepNumber.style.display = 'block';
-    otpCode.value = '';
-    authError.classList.remove('show');
-  });
-
-  let pendingPhoneUid = null;
-  verifyCodeBtn.addEventListener('click', () => {
-    const code = otpCode.value.trim();
-    if(!code){ showAuthError('Enter the code you received.'); return; }
-    verifyCodeBtn.disabled = true;
-    confirmationResult.confirm(code)
-      .catch(err => { showAuthError(err.message); verifyCodeBtn.disabled = false; })
-      .then(() => { verifyCodeBtn.disabled = false; });
-    // onAuthStateChanged decides whether to show the app or ask for a name
-  });
-
-  finishPhoneSignupBtn.addEventListener('click', () => {
-    const name = phoneAuthName.value.trim();
-    if(!name){ showAuthError('Enter your name.'); return; }
-    finishPhoneSignupBtn.disabled = true;
-    const user = auth.currentUser;
-    user.updateProfile({displayName: name}).then(() => {
-      return db.collection('users').doc(user.uid).set({
-        name: name,
-        phone: user.phoneNumber || '',
-        createdAt: FieldValue.serverTimestamp(),
-        lastActive: FieldValue.serverTimestamp()
-      });
-    }).then(() => {
-      finishPhoneSignupBtn.disabled = false;
-      authScreen.style.display = 'none';
-      app.style.display = 'grid';
-      startApp(user);
-    }).catch(err => { showAuthError(err.message); finishPhoneSignupBtn.disabled = false; });
+      .catch(err => showAuthError(err.message))
+      .finally(() => { googleBtn.disabled = false; });
   });
 
   function showAuthError(msg){
@@ -734,16 +637,9 @@
           app.style.display = 'grid';
           startApp(user);
         } else {
-          // Signed in (e.g. via phone) but no profile yet — ask for a name first.
+          // Signed in but no profile doc yet — treat as an in-progress signup.
           app.style.display = 'none';
           authScreen.style.display = 'flex';
-          phonePanel.style.display = 'block';
-          emailPanel.style.display = 'none';
-          tabPhone.classList.add('active'); tabEmail.classList.remove('active');
-          phoneStepNumber.style.display = 'none';
-          phoneStepCode.style.display = 'none';
-          phoneStepName.style.display = 'block';
-          authSub.textContent = "Almost done — what's your name?";
         }
       }).catch(err => console.error('profile check failed', err));
     } else {
@@ -752,12 +648,12 @@
       app.style.display = 'none';
       authScreen.style.display = 'flex';
       authSubmit.disabled = false;
-      setAuthTab('email');
       setMode('signin');
     }
   });
 
   function stopApp(){
+    appStarted = false;
     if(usersUnsub) usersUnsub();
     if(currentChatUnsub) currentChatUnsub();
     Object.values(unsubMessageStubs).forEach(fn => fn());
@@ -766,7 +662,10 @@
     users = {}; lastMessages = {}; currentChatUid = null;
   }
 
+  let appStarted = false;
   function startApp(user){
+    if(appStarted) return;
+    appStarted = true;
     myProfile = { name: user.displayName || user.email, email: user.email };
     meBadge.textContent = initials(myProfile.name);
     meBadge.style.background = colorFromString(user.uid);
