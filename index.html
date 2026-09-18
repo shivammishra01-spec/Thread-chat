@@ -501,6 +501,18 @@
   }
   .row .bubble.has-image{ padding: 5px; }
   .row .bubble.has-image .msg-caption{ padding: 6px 8px 2px; }
+  .deleted-bubble{ font-style: italic; color: var(--ink-faint) !important; background: var(--panel-2) !important; }
+  .bubble{ user-select:none; -webkit-user-select:none; }
+  .msg-action-item{
+    width:100%; text-align:left;
+    background: var(--panel-2); border:1px solid var(--line);
+    padding: 11px 12px; border-radius:10px;
+    font-size:14px; font-weight:600; cursor:pointer;
+    color: var(--ink); margin-bottom:8px;
+    font-family:inherit;
+  }
+  .msg-action-item:hover{ background: rgba(255,255,255,0.05); }
+  .msg-action-item.danger{ color: var(--danger); }
   .image-lightbox{
     position:fixed; inset:0; background: rgba(0,0,0,0.85);
     display:none; align-items:center; justify-content:center;
@@ -659,6 +671,15 @@
     <div class="image-lightbox" id="imageLightbox">
       <img id="lightboxImg" src="" alt="">
     </div>
+    <div class="modal-overlay" id="msgActionsOverlay">
+      <div class="modal">
+        <h3>Message options</h3>
+        <div id="msgActionsList"></div>
+        <div class="modal-actions">
+          <button class="modal-btn ghost" id="cancelMsgActions">Cancel</button>
+        </div>
+      </div>
+    </div>
     <div class="empty-state" id="emptyState">
       <div class="brand-mark">T</div>
       <h2>Pick someone to message</h2>
@@ -810,6 +831,9 @@
   const cancelPhotoBtn = document.getElementById('cancelPhotoBtn');
   const imageLightbox = document.getElementById('imageLightbox');
   const lightboxImg = document.getElementById('lightboxImg');
+  const msgActionsOverlay = document.getElementById('msgActionsOverlay');
+  const msgActionsList = document.getElementById('msgActionsList');
+  const cancelMsgActions = document.getElementById('cancelMsgActions');
   const backBtn = document.getElementById('backBtn');
   const meBadge = document.getElementById('meBadge');
   const accountMenu = document.getElementById('accountMenu');
@@ -1166,7 +1190,7 @@
           const doc = snap.docs[0];
           const d = doc.data();
           const prev = lastMessages[uid];
-          const previewText = d.image ? ('📷 Photo' + (d.text ? ': ' + d.text : '')) : d.text;
+          const previewText = d.deleted ? 'This message was deleted' : (d.image ? ('📷 Photo' + (d.text ? ': ' + d.text : '')) : d.text);
           const msg = {
             text: previewText,
             senderId: d.senderId,
@@ -1302,12 +1326,15 @@
         const msgs = snap.docs.map(doc => {
           const d = doc.data();
           return {
+            id: doc.id,
             who: d.senderId === myUid ? 'me' : 'them',
             text: d.text,
             image: d.image || null,
+            deleted: !!d.deleted,
+            hiddenFor: d.hiddenFor || [],
             t: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
           };
-        });
+        }).filter(m => !m.hiddenFor.includes(myUid));
         renderMessages(msgs);
         setLastRead(uid);
         renderList();
@@ -1338,14 +1365,22 @@
       }
       const row = document.createElement('div');
       row.className = 'row ' + m.who;
-      if(m.image && isValidImageDataUrl(m.image)){
+      let longPressState = null;
+      if(m.deleted){
+        row.innerHTML = `<div class="bubble deleted-bubble">This message was deleted</div>`;
+      } else if(m.image && isValidImageDataUrl(m.image)){
         const captionHtml = m.text ? `<div class="msg-caption">${escapeHtml(m.text)}</div>` : '';
         row.innerHTML = `<div class="bubble has-image"><img class="msg-image" alt="Photo">${captionHtml}</div>`;
         const imgEl = row.querySelector('.msg-image');
         imgEl.src = m.image;
-        imgEl.addEventListener('click', () => openLightbox(m.image));
+        longPressState = attachLongPress(row.querySelector('.bubble'), m);
+        imgEl.addEventListener('click', () => {
+          if(longPressState && longPressState.fired) return;
+          openLightbox(m.image);
+        });
       } else {
         row.innerHTML = `<div class="bubble">${escapeHtml(m.text)}</div>`;
+        attachLongPress(row.querySelector('.bubble'), m);
       }
       messagesEl.appendChild(row);
 
@@ -1484,6 +1519,60 @@
     imageLightbox.classList.remove('open');
     lightboxImg.src = '';
   });
+
+  // ---------- Message long-press actions (delete for me / everyone) ----------
+  function attachLongPress(el, msg, onFired){
+    if(!el || msg.deleted) return null;
+    const state = { fired: false };
+    let timer = null;
+    const start = () => {
+      state.fired = false;
+      timer = setTimeout(() => {
+        state.fired = true;
+        openMsgActions(msg);
+        if(onFired) onFired();
+      }, 450);
+    };
+    const cancel = () => { if(timer) clearTimeout(timer); };
+    el.addEventListener('pointerdown', start);
+    el.addEventListener('pointerup', cancel);
+    el.addEventListener('pointerleave', cancel);
+    el.addEventListener('pointercancel', cancel);
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); state.fired = true; openMsgActions(msg); });
+    return state;
+  }
+
+  function openMsgActions(msg){
+    msgActionsList.innerHTML = '';
+    const deleteForMeBtn = document.createElement('button');
+    deleteForMeBtn.className = 'msg-action-item danger';
+    deleteForMeBtn.textContent = 'Delete for me';
+    deleteForMeBtn.addEventListener('click', () => { deleteMessage(msg.id, 'me'); closeMsgActions(); });
+    msgActionsList.appendChild(deleteForMeBtn);
+
+    if(msg.who === 'me'){
+      const deleteForEveryoneBtn = document.createElement('button');
+      deleteForEveryoneBtn.className = 'msg-action-item danger';
+      deleteForEveryoneBtn.textContent = 'Delete for everyone';
+      deleteForEveryoneBtn.addEventListener('click', () => { deleteMessage(msg.id, 'everyone'); closeMsgActions(); });
+      msgActionsList.appendChild(deleteForEveryoneBtn);
+    }
+    msgActionsOverlay.classList.add('open');
+  }
+  function closeMsgActions(){ msgActionsOverlay.classList.remove('open'); }
+  cancelMsgActions.addEventListener('click', closeMsgActions);
+  msgActionsOverlay.addEventListener('click', (e) => { if(e.target === msgActionsOverlay) closeMsgActions(); });
+
+  function deleteMessage(msgId, scope){
+    if(!currentChatUid) return;
+    const chatId = chatIdFor(myUid, currentChatUid);
+    const ref = db.collection('chats').doc(chatId).collection('messages').doc(msgId);
+    if(scope === 'me'){
+      ref.update({ hiddenFor: FieldValue.arrayUnion(myUid) }).catch(err => console.error('delete for me failed', err));
+    } else {
+      ref.update({ text: '', image: FieldValue.delete(), deleted: true }).catch(err => console.error('delete for everyone failed', err));
+    }
+  }
 
   // ---------- Controls ----------
   backBtn.addEventListener('click', () => app.classList.remove('chat-open'));
