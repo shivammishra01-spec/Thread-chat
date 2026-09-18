@@ -469,6 +469,45 @@
   }
   .send-btn:disabled{ opacity:.4; cursor:default; }
   .send-btn:not(:disabled):active{ transform: scale(.92); }
+  .photo-btn{
+    width:38px; height:38px; flex-shrink:0;
+    border-radius:10px;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    color: var(--ink-dim);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .photo-btn:hover{ color: var(--amber); border-color: var(--amber-dim); }
+  .photo-preview-bar{
+    display:flex; align-items:center; gap:10px;
+    padding: 8px 20px;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .photo-preview-bar img{
+    width:44px; height:44px; object-fit:cover; border-radius:8px; flex-shrink:0;
+  }
+  .photo-preview-bar span{ font-size:12px; color: var(--ink-faint); flex:1; }
+  .photo-preview-bar button{
+    background:none; border:none; color: var(--ink-faint); font-size:20px;
+    cursor:pointer; padding: 0 6px; flex-shrink:0;
+  }
+  .msg-image{
+    max-width: 100%; max-height: 280px;
+    border-radius: 12px;
+    display:block;
+    cursor: pointer;
+  }
+  .row .bubble.has-image{ padding: 5px; }
+  .row .bubble.has-image .msg-caption{ padding: 6px 8px 2px; }
+  .image-lightbox{
+    position:fixed; inset:0; background: rgba(0,0,0,0.85);
+    display:none; align-items:center; justify-content:center;
+    z-index:80; padding: 20px;
+  }
+  .image-lightbox.open{ display:flex; }
+  .image-lightbox img{ max-width:100%; max-height:100%; border-radius:8px; }
 
   .empty-state{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color: var(--ink-faint); gap:10px; text-align:center; padding:40px; }
   .empty-state .brand-mark{ width:52px;height:52px;border-radius:16px;font-size:24px;margin-bottom:6px; }
@@ -617,6 +656,9 @@
         </div>
       </div>
     </div>
+    <div class="image-lightbox" id="imageLightbox">
+      <img id="lightboxImg" src="" alt="">
+    </div>
     <div class="empty-state" id="emptyState">
       <div class="brand-mark">T</div>
       <h2>Pick someone to message</h2>
@@ -649,7 +691,16 @@
 
       <div class="messages" id="messages"></div>
 
+      <div class="photo-preview-bar" id="photoPreviewBar" style="display:none;">
+        <img id="photoPreviewImg" alt="">
+        <span id="photoPreviewSize"></span>
+        <button id="cancelPhotoBtn" title="Remove photo">&times;</button>
+      </div>
       <div class="composer">
+        <input type="file" id="photoInput" accept="image/*" style="display:none;">
+        <button class="photo-btn" id="photoBtn" title="Send a photo" aria-label="Send a photo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+        </button>
         <textarea class="composer-input" id="composerInput" placeholder="Write a message" rows="1"></textarea>
         <button class="send-btn" id="sendBtn" disabled aria-label="Send message">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -696,6 +747,11 @@
     const d = document.createElement('div');
     d.textContent = s == null ? '' : s;
     return d.innerHTML;
+  }
+  function isValidImageDataUrl(s){
+    return typeof s === 'string'
+      && s.length < 1200000
+      && /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s);
   }
   function fmtTime(ms){
     if(!ms) return '';
@@ -746,6 +802,14 @@
   const removeContactBtn = document.getElementById('removeContactBtn');
   const composerInput = document.getElementById('composerInput');
   const sendBtn = document.getElementById('sendBtn');
+  const photoBtn = document.getElementById('photoBtn');
+  const photoInput = document.getElementById('photoInput');
+  const photoPreviewBar = document.getElementById('photoPreviewBar');
+  const photoPreviewImg = document.getElementById('photoPreviewImg');
+  const photoPreviewSize = document.getElementById('photoPreviewSize');
+  const cancelPhotoBtn = document.getElementById('cancelPhotoBtn');
+  const imageLightbox = document.getElementById('imageLightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
   const backBtn = document.getElementById('backBtn');
   const meBadge = document.getElementById('meBadge');
   const accountMenu = document.getElementById('accountMenu');
@@ -1102,8 +1166,9 @@
           const doc = snap.docs[0];
           const d = doc.data();
           const prev = lastMessages[uid];
+          const previewText = d.image ? ('📷 Photo' + (d.text ? ': ' + d.text : '')) : d.text;
           const msg = {
-            text: d.text,
+            text: previewText,
             senderId: d.senderId,
             atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
           };
@@ -1239,6 +1304,7 @@
           return {
             who: d.senderId === myUid ? 'me' : 'them',
             text: d.text,
+            image: d.image || null,
             t: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
           };
         });
@@ -1272,7 +1338,15 @@
       }
       const row = document.createElement('div');
       row.className = 'row ' + m.who;
-      row.innerHTML = `<div class="bubble">${escapeHtml(m.text)}</div>`;
+      if(m.image && isValidImageDataUrl(m.image)){
+        const captionHtml = m.text ? `<div class="msg-caption">${escapeHtml(m.text)}</div>` : '';
+        row.innerHTML = `<div class="bubble has-image"><img class="msg-image" alt="Photo">${captionHtml}</div>`;
+        const imgEl = row.querySelector('.msg-image');
+        imgEl.src = m.image;
+        imgEl.addEventListener('click', () => openLightbox(m.image));
+      } else {
+        row.innerHTML = `<div class="bubble">${escapeHtml(m.text)}</div>`;
+      }
       messagesEl.appendChild(row);
 
       const isLastInGroup = (i === msgs.length-1) || msgs[i+1].who !== m.who;
@@ -1291,31 +1365,125 @@
   }
 
   // ---------- Sending ----------
+  let pendingPhoto = null; // { dataUrl, sizeLabel }
+
   function sendMessage(){
     const val = composerInput.value.trim();
-    if(!val || !currentChatUid) return;
+    if((!val && !pendingPhoto) || !currentChatUid) return;
     const chatId = chatIdFor(myUid, currentChatUid);
-    composerInput.value = '';
-    autoGrow();
-    updateSendState();
-    db.collection('chats').doc(chatId).collection('messages').add({
+    const payload = {
       senderId: myUid,
       text: val,
       createdAt: FieldValue.serverTimestamp()
-    }).catch(err => console.error('send failed', err));
+    };
+    if(pendingPhoto){ payload.image = pendingPhoto.dataUrl; }
+    composerInput.value = '';
+    clearPendingPhoto();
+    autoGrow();
+    updateSendState();
+    db.collection('chats').doc(chatId).collection('messages').add(payload)
+      .catch(err => console.error('send failed', err));
   }
 
   function autoGrow(){
     composerInput.style.height = 'auto';
     composerInput.style.height = Math.min(composerInput.scrollHeight, 120) + 'px';
   }
-  function updateSendState(){ sendBtn.disabled = composerInput.value.trim().length === 0; }
+  function updateSendState(){ sendBtn.disabled = composerInput.value.trim().length === 0 && !pendingPhoto; }
 
   composerInput.addEventListener('input', () => { autoGrow(); updateSendState(); });
   composerInput.addEventListener('keydown', (e) => {
     if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
   });
   sendBtn.addEventListener('click', sendMessage);
+
+  // ---------- Photo attach + compress ----------
+  function clearPendingPhoto(){
+    pendingPhoto = null;
+    photoPreviewBar.style.display = 'none';
+    photoPreviewImg.src = '';
+    photoInput.value = '';
+  }
+  cancelPhotoBtn.addEventListener('click', () => { clearPendingPhoto(); updateSendState(); });
+
+  photoBtn.addEventListener('click', () => photoInput.click());
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files && photoInput.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){
+      alert('Please choose an image file.');
+      photoInput.value = '';
+      return;
+    }
+    compressImage(file).then(dataUrl => {
+      pendingPhoto = { dataUrl, sizeLabel: Math.round(dataUrl.length / 1024) + ' KB' };
+      photoPreviewImg.src = dataUrl;
+      photoPreviewSize.textContent = pendingPhoto.sizeLabel;
+      photoPreviewBar.style.display = 'flex';
+      updateSendState();
+    }).catch(err => {
+      console.error('image compress failed', err);
+      alert("Couldn't process that image — try a different one.");
+      photoInput.value = '';
+    });
+  });
+
+  function compressImage(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const MAX_DIM = 1000;
+          let { width, height } = img;
+          if(width > MAX_DIM || height > MAX_DIM){
+            if(width >= height){ height = Math.round(height * MAX_DIM / width); width = MAX_DIM; }
+            else { width = Math.round(width * MAX_DIM / height); height = MAX_DIM; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          function tryQuality(q, dim){
+            if(dim !== width){
+              const c2 = document.createElement('canvas');
+              const w2 = dim, h2 = Math.round(height * (dim/width));
+              c2.width = w2; c2.height = h2;
+              c2.getContext('2d').drawImage(img, 0, 0, w2, h2);
+              return c2.toDataURL('image/jpeg', q);
+            }
+            return canvas.toDataURL('image/jpeg', q);
+          }
+
+          let dataUrl = tryQuality(0.7, width);
+          if(dataUrl.length > 700000) dataUrl = tryQuality(0.5, width);
+          if(dataUrl.length > 700000) dataUrl = tryQuality(0.4, Math.round(width*0.7));
+          if(dataUrl.length > 700000) dataUrl = tryQuality(0.3, Math.round(width*0.5));
+          if(dataUrl.length > 900000){
+            reject(new Error('Image too large even after compression'));
+            return;
+          }
+          resolve(dataUrl);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------- Image lightbox ----------
+  function openLightbox(src){
+    lightboxImg.src = src;
+    imageLightbox.classList.add('open');
+  }
+  imageLightbox.addEventListener('click', () => {
+    imageLightbox.classList.remove('open');
+    lightboxImg.src = '';
+  });
 
   // ---------- Controls ----------
   backBtn.addEventListener('click', () => app.classList.remove('chat-open'));
@@ -1530,8 +1698,44 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js').catch((err) => {
+      navigator.serviceWorker.register('service-worker.js').then((reg) => {
+        const banner = document.getElementById('updateBanner');
+        const btn = document.getElementById('updateBannerBtn');
+
+        function showBannerFor(worker){
+          banner.classList.add('show');
+          btn.onclick = () => {
+            worker.postMessage('SKIP_WAITING');
+          };
+        }
+
+        // A waiting worker already exists from a previous visit (e.g. app was
+        // closed before the update was applied).
+        if(reg.waiting){ showBannerFor(reg.waiting); }
+
+        // A new worker started installing during this visit.
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if(!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+              showBannerFor(newWorker);
+            }
+          });
+        });
+
+        // Check for updates periodically while the app stays open.
+        setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
+      }).catch((err) => {
         console.error('Service worker registration failed', err);
+      });
+
+      // Once the new worker takes control, reload so the fresh code runs.
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if(reloading) return;
+        reloading = true;
+        window.location.reload();
       });
     });
   }

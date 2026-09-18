@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thread-cache-v1';
+const CACHE_NAME = 'thread-cache-v3';
 const PRECACHE_URLS = [
   './index.html',
   './manifest.json',
@@ -10,7 +10,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
   );
-  self.skipWaiting();
+  // Intentionally NOT calling skipWaiting() here — the new service worker
+  // stays "waiting" until the page tells it to activate (see the
+  // SKIP_WAITING message below). This is what lets the app show an
+  // "update available" prompt instead of silently swapping versions.
 });
 
 self.addEventListener('activate', (event) => {
@@ -20,6 +23,12 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Network-first for navigation/HTML so signed-in users always get fresh app code;
