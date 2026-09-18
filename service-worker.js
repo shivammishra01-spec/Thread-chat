@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thread-cache-v7';
+const CACHE_NAME = 'thread-cache-v10';
 const PRECACHE_URLS = [
   './index.html',
   './manifest.json',

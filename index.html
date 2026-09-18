@@ -310,14 +310,11 @@
   }
   .loading-wrap{ display:flex; flex-direction:column; align-items:center; gap:18px; }
   .loading-mark{
-    width:64px; height:64px; border-radius:20px;
-    background: linear-gradient(135deg, var(--amber), #c97f1f);
+    width:110px; height:110px;
     display:flex; align-items:center; justify-content:center;
-    font-family:'Space Grotesk','Inter',sans-serif;
-    font-size:30px; font-weight:700; color:#1a1300;
     animation: loadingBounce 1.1s ease-in-out infinite;
-    box-shadow: 0 10px 24px rgba(232,163,61,0.25);
   }
+  .loading-mark svg{ width:100%; height:100%; }
   @keyframes loadingBounce{
     0%, 100%{ transform: translateY(0) scale(1); }
     50%{ transform: translateY(-10px) scale(1.04); }
@@ -541,7 +538,10 @@
   .row .bubble.has-image{ padding: 5px; }
   .row .bubble.has-image .msg-caption{ padding: 6px 8px 2px; }
   .deleted-bubble{ font-style: italic; color: var(--ink-faint) !important; background: var(--panel-2) !important; }
-  .bubble{ user-select:none; -webkit-user-select:none; }
+  .bubble{
+    user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none;
+    -webkit-touch-callout:none;
+  }
   .msg-action-item{
     width:100%; text-align:left;
     background: var(--panel-2); border:1px solid var(--line);
@@ -594,7 +594,25 @@
 
 <div class="auth-loading" id="authLoading">
   <div class="loading-wrap">
-    <div class="loading-mark">T</div>
+    <div class="loading-mark">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="100" cy="168" rx="46" ry="7" fill="#000" opacity="0.25"/>
+        <g fill="#f0c896" stroke="#2a1c10" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M62 150 C50 150 40 140 40 126 C40 112 48 104 60 100
+                   C55 92 52 82 55 72 C57 64 65 60 71 65 C76 69 78 78 79 86
+                   L80 70 C80 60 88 54 95 58 C101 61 102 70 102 80 L103 66
+                   C104 57 112 52 119 57 C125 61 125 71 124 81 L124 72
+                   C125 64 132 59 138 64 C143 68 143 78 141 88
+                   L146 100 C154 104 160 112 160 124 C160 142 146 154 128 154
+                   L80 154 C73 154 66 153 62 150 Z"/>
+        </g>
+        <g fill="none" stroke="#2a1c10" stroke-width="3.5" stroke-linecap="round">
+          <path d="M79 86 L80 112"/>
+          <path d="M102 80 L102 112"/>
+          <path d="M124 81 L123 112"/>
+        </g>
+      </svg>
+    </div>
     <div class="loading-text"><span>L</span><span>O</span><span>A</span><span>D</span><span>I</span><span>N</span><span>G</span></div>
   </div>
 </div>
@@ -737,7 +755,10 @@
         </button>
         <div class="avatar" id="headAvatar"></div>
         <div class="chat-head-info">
-          <div class="chat-head-name" id="headName"></div>
+          <div class="chat-head-name" id="headName">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px; margin-right:4px; opacity:.6;"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <span id="headNameText"></span>
+          </div>
           <div class="chat-head-status" id="headStatus"></div>
         </div>
         <div class="chat-options" id="chatOptions">
@@ -766,7 +787,7 @@
         <button class="photo-btn" id="photoBtn" title="Send a photo" aria-label="Send a photo">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
         </button>
-        <textarea class="composer-input" id="composerInput" placeholder="Write a message" rows="1"></textarea>
+        <textarea class="composer-input" id="composerInput" placeholder="Write an encrypted message" rows="1"></textarea>
         <button class="send-btn" id="sendBtn" disabled aria-label="Send message">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
@@ -797,6 +818,121 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const FieldValue = firebase.firestore.FieldValue;
+
+  // ============================================================
+  // End-to-end encryption (Web Crypto API: ECDH P-256 + AES-GCM)
+  // Private keys never leave this device. Only public keys go to
+  // Firestore. Message content is encrypted before it's written,
+  // so the database only ever holds unreadable ciphertext.
+  // ============================================================
+  const E2E_DB_NAME = 'thread_e2e_keys';
+  const E2E_STORE = 'keys';
+
+  function openKeyDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(E2E_DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(E2E_STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbGet(key){
+    return openKeyDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(E2E_STORE, 'readonly');
+      const r = tx.objectStore(E2E_STORE).get(key);
+      r.onsuccess = () => resolve(r.result || null);
+      r.onerror = () => reject(r.error);
+    }));
+  }
+  function idbSet(key, value){
+    return openKeyDB().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction(E2E_STORE, 'readwrite');
+      tx.objectStore(E2E_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  let myPrivateKey = null;   // CryptoKey, kept only in memory + IndexedDB (this device)
+  const sharedKeyCache = {}; // contactUid -> Promise<CryptoKey>
+
+  function ensureMyKeyPair(){
+    const storageKey = 'privateKey_' + myUid;
+    return idbGet(storageKey).then(existingPriv => {
+      if(existingPriv){
+        myPrivateKey = existingPriv;
+        return;
+      }
+      return crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+      ).then(pair => {
+        myPrivateKey = pair.privateKey;
+        return Promise.all([
+          idbSet(storageKey, pair.privateKey),
+          crypto.subtle.exportKey('jwk', pair.publicKey)
+        ]);
+      }).then(([, jwk]) => {
+        return db.collection('users').doc(myUid).set({ publicKeyJwk: jwk }, {merge:true});
+      });
+    });
+  }
+
+  function importPublicKey(jwk){
+    return crypto.subtle.importKey(
+      'jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, []
+    );
+  }
+
+  function getSharedKey(contactUid){
+    if(sharedKeyCache[contactUid]) return sharedKeyCache[contactUid];
+    const p = db.collection('users').doc(contactUid).get().then(doc => {
+      const jwk = doc.exists ? doc.data().publicKeyJwk : null;
+      if(!jwk || !myPrivateKey) return null;
+      return importPublicKey(jwk).then(theirPub => {
+        return crypto.subtle.deriveKey(
+          { name: 'ECDH', public: theirPub },
+          myPrivateKey,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['encrypt', 'decrypt']
+        );
+      });
+    }).catch(err => { console.error('key exchange failed', err); return null; });
+    sharedKeyCache[contactUid] = p;
+    return p;
+  }
+
+  function bufToB64(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  }
+  function b64ToBuf(b64){
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr.buffer;
+  }
+
+  function encryptForContact(contactUid, plaintext){
+    if(plaintext == null || plaintext === '') return Promise.resolve(null);
+    return getSharedKey(contactUid).then(key => {
+      if(!key) return null;
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext)
+      ).then(ct => ({ iv: bufToB64(iv), ct: bufToB64(ct) }));
+    });
+  }
+
+  function decryptForContact(contactUid, enc){
+    if(!enc || !enc.iv || !enc.ct) return Promise.resolve(null);
+    return getSharedKey(contactUid).then(key => {
+      if(!key) return null;
+      return crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: b64ToBuf(enc.iv) }, key, b64ToBuf(enc.ct)
+      ).then(buf => new TextDecoder().decode(buf))
+        .catch(() => null);
+    });
+  }
 
   // ---------- Helpers ----------
   const palette = ['#e8a33d','#3e7c6b','#5a7fd6','#c9578a','#5aa8a0','#c97f1f','#7d6fd1'];
@@ -858,6 +994,7 @@
   const messagesEl = document.getElementById('messages');
   const headAvatar = document.getElementById('headAvatar');
   const headName = document.getElementById('headName');
+  const headNameText = document.getElementById('headNameText');
   const headStatus = document.getElementById('headStatus');
   const chatOptionsBtn = document.getElementById('chatOptionsBtn');
   const chatOptionsMenu = document.getElementById('chatOptionsMenu');
@@ -1152,6 +1289,8 @@
     profileUnsubs = {};
     if(statusTicker) clearInterval(statusTicker);
     users = {}; lastMessages = {}; incomingRequests = {}; myContactMeta = {}; currentChatUid = null;
+    myPrivateKey = null;
+    Object.keys(sharedKeyCache).forEach(k => delete sharedKeyCache[k]);
   }
 
   let appStarted = false;
@@ -1163,6 +1302,10 @@
     meBadge.style.background = colorFromString(user.uid);
     menuName.textContent = myProfile.name;
     menuUsername.textContent = '@' + myProfile.username;
+
+    // Set up (or load) this device's encryption keys before wiring up any
+    // chat listeners, so nothing tries to encrypt/decrypt before keys exist.
+    ensureMyKeyPair().catch(err => console.error('key setup failed', err)).then(() => {
 
     // Presence: mark active now, then every 25s while open
     touchPresence();
@@ -1216,6 +1359,8 @@
       });
       renderRequests();
     }, err => console.error('requests snapshot error', err));
+
+    }); // end ensureMyKeyPair().then()
   }
 
   function touchPresence(){
@@ -1234,21 +1379,36 @@
           const doc = snap.docs[0];
           const d = doc.data();
           const prev = lastMessages[uid];
-          const previewText = d.deleted ? 'This message was deleted' : (d.image ? ('📷 Photo' + (d.text ? ': ' + d.text : '')) : d.text);
-          const msg = {
-            text: previewText,
-            senderId: d.senderId,
-            atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
-          };
-          lastMessages[uid] = msg;
-          if(!firstSnapshot && (!prev || msg.atMs > prev.atMs)){
-            maybeNotify(uid, msg);
+          const wasFirst = firstSnapshot;
+          firstSnapshot = false;
+
+          if(d.deleted){
+            const msg = { text: 'This message was deleted', senderId: d.senderId, atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now() };
+            lastMessages[uid] = msg;
+            renderList();
+            return;
           }
+
+          const textP = d.encText ? decryptForContact(uid, d.encText) : Promise.resolve(d.text);
+          const hasImageP = d.encImage ? decryptForContact(uid, d.encImage).then(v => !!v) : Promise.resolve(!!d.image);
+          Promise.all([textP, hasImageP]).then(([text, hasImage]) => {
+            const previewText = hasImage ? ('📷 Photo' + (text ? ': ' + text : '')) : (text || '🔒 Unable to decrypt');
+            const msg = {
+              text: previewText,
+              senderId: d.senderId,
+              atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
+            };
+            lastMessages[uid] = msg;
+            if(!wasFirst && (!prev || msg.atMs > prev.atMs)){
+              maybeNotify(uid, msg);
+            }
+            renderList();
+          });
         } else {
           lastMessages[uid] = null;
+          firstSnapshot = false;
+          renderList();
         }
-        firstSnapshot = false;
-        renderList();
       }, err => console.error('preview snapshot error', err));
     unsubMessageStubs[uid] = unsub;
   }
@@ -1357,31 +1517,48 @@
 
     headAvatar.style.background = colorFromString(uid);
     headAvatar.textContent = initials(u.name);
-    headName.textContent = u.name;
+    headNameText.textContent = u.name;
     renderHeadStatus();
     updateMuteBtnLabel();
     renderList();
 
     if(currentChatUnsub) currentChatUnsub();
     const chatId = chatIdFor(myUid, uid);
+    let renderToken = 0;
     currentChatUnsub = db.collection('chats').doc(chatId).collection('messages')
       .orderBy('createdAt','asc')
       .onSnapshot(snap => {
-        const msgs = snap.docs.map(doc => {
+        const myToken = ++renderToken;
+        const rawDocs = snap.docs.map(doc => {
           const d = doc.data();
           return {
             id: doc.id,
             who: d.senderId === myUid ? 'me' : 'them',
-            text: d.text,
-            image: d.image || null,
+            rawText: d.text,          // legacy plaintext, pre-encryption messages
+            rawImage: d.image || null,
+            encText: d.encText || null,
+            encImage: d.encImage || null,
             deleted: !!d.deleted,
             hiddenFor: d.hiddenFor || [],
             t: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
           };
         }).filter(m => !m.hiddenFor.includes(myUid));
-        renderMessages(msgs);
-        setLastRead(uid);
-        renderList();
+
+        Promise.all(rawDocs.map(m => {
+          if(m.deleted) return Promise.resolve(m);
+          const textP = m.encText ? decryptForContact(uid, m.encText) : Promise.resolve(m.rawText);
+          const imageP = m.encImage ? decryptForContact(uid, m.encImage) : Promise.resolve(m.rawImage);
+          return Promise.all([textP, imageP]).then(([text, image]) => {
+            m.text = (text == null && m.encText) ? '🔒 Unable to decrypt' : (text || '');
+            m.image = image;
+            return m;
+          });
+        })).then(msgs => {
+          if(myToken !== renderToken) return; // a newer snapshot has since arrived
+          renderMessages(msgs);
+          setLastRead(uid);
+          renderList();
+        });
       }, err => console.error('messages snapshot error', err));
 
     composerInput.focus();
@@ -1450,18 +1627,31 @@
     const val = composerInput.value.trim();
     if((!val && !pendingPhoto) || !currentChatUid) return;
     const chatId = chatIdFor(myUid, currentChatUid);
-    const payload = {
-      senderId: myUid,
-      text: val,
-      createdAt: FieldValue.serverTimestamp()
-    };
-    if(pendingPhoto){ payload.image = pendingPhoto.dataUrl; }
+    const contactUid = currentChatUid;
+    const photo = pendingPhoto;
     composerInput.value = '';
     clearPendingPhoto();
     autoGrow();
     updateSendState();
-    db.collection('chats').doc(chatId).collection('messages').add(payload)
-      .catch(err => console.error('send failed', err));
+
+    Promise.all([
+      encryptForContact(contactUid, val),
+      photo ? encryptForContact(contactUid, photo.dataUrl) : Promise.resolve(null)
+    ]).then(([encText, encImage]) => {
+      const payload = {
+        senderId: myUid,
+        createdAt: FieldValue.serverTimestamp()
+      };
+      if(encText) payload.encText = encText;
+      if(encImage) payload.encImage = encImage;
+      if(!encText && !encImage){
+        // Encryption isn't ready yet (e.g. key exchange failed) — fail loudly
+        // rather than silently sending in plain text.
+        alert("Couldn't secure this message — check your connection and try again.");
+        return;
+      }
+      return db.collection('chats').doc(chatId).collection('messages').add(payload);
+    }).catch(err => console.error('send failed', err));
   }
 
   function autoGrow(){
@@ -1569,7 +1759,7 @@
     if(!el || msg.deleted) return null;
     const state = { fired: false };
     let timer = null;
-    const start = () => {
+    const start = (e) => {
       state.fired = false;
       timer = setTimeout(() => {
         state.fired = true;
@@ -1583,6 +1773,7 @@
     el.addEventListener('pointerleave', cancel);
     el.addEventListener('pointercancel', cancel);
     el.addEventListener('contextmenu', (e) => { e.preventDefault(); state.fired = true; openMsgActions(msg); });
+    el.addEventListener('selectstart', (e) => e.preventDefault());
     return state;
   }
 
@@ -1614,7 +1805,13 @@
     if(scope === 'me'){
       ref.update({ hiddenFor: FieldValue.arrayUnion(myUid) }).catch(err => console.error('delete for me failed', err));
     } else {
-      ref.update({ text: '', image: FieldValue.delete(), deleted: true }).catch(err => console.error('delete for everyone failed', err));
+      ref.update({
+        text: FieldValue.delete(),
+        image: FieldValue.delete(),
+        encText: FieldValue.delete(),
+        encImage: FieldValue.delete(),
+        deleted: true
+      }).catch(err => console.error('delete for everyone failed', err));
     }
   }
 
