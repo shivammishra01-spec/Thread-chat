@@ -1705,7 +1705,13 @@
         function showBannerFor(worker){
           banner.classList.add('show');
           btn.onclick = () => {
-            worker.postMessage('SKIP_WAITING');
+            btn.disabled = true;
+            btn.textContent = 'Updating…';
+            try { worker.postMessage('SKIP_WAITING'); } catch(e){ console.error(e); }
+            // Our fetch handler serves fresh HTML on every navigation anyway,
+            // so reload no matter what, in case the controllerchange event
+            // is delayed or the captured worker reference went stale.
+            setTimeout(() => window.location.reload(), 400);
           };
         }
 
