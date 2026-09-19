@@ -2276,9 +2276,8 @@
       return Promise.all(writes);
     }).then(() => getLocalMedia(type)).then(() => {
       joinRoomConnections();
-      callOverlay.classList.add('in-call');
-      callStatus.textContent = '00:00';
-      startCallTimer();
+      // Stays on "Calling…" until someone else actually joins (see
+      // joinRoomConnections, which flips to the in-call UI then).
     }).catch(err => {
       console.error('start call failed', err);
       alert("Couldn't start the call — check camera/microphone permission.");
@@ -2300,9 +2299,7 @@
 
     getLocalMedia(call.type).then(() => {
       joinRoomConnections();
-      callOverlay.classList.add('in-call');
-      callStatus.textContent = '00:00';
-      startCallTimer();
+      // Stays on "Connecting…" until a peer connection actually forms.
     }).catch(err => {
       console.error('accept call failed', err);
       alert("Couldn't join the call — check camera/microphone permission.");
@@ -2324,6 +2321,7 @@
   }
 
   // ---------- Mesh connection management ----------
+  let inCallStarted = false;
   function joinRoomConnections(){
     // Watch the room doc for the authoritative participant list (in case it
     // changes) and end the call for everyone if the host ends it.
@@ -2342,6 +2340,12 @@
         if(otherUid === myUid) return;
         if(change.type === 'removed'){ teardownPeer(otherUid); return; }
         if(!peers[otherUid]) connectToPeer(otherUid);
+        if(!inCallStarted){
+          inCallStarted = true;
+          callOverlay.classList.add('in-call');
+          callStatus.textContent = '00:00';
+          startCallTimer();
+        }
       });
     });
   }
@@ -2475,6 +2479,7 @@
     currentRoomParticipants = [];
     pendingIncomingCall = null;
     micOn = true; camOn = true;
+    inCallStarted = false;
     toggleMicBtn.classList.remove('active-off');
     toggleCamBtn.classList.remove('active-off');
   }
