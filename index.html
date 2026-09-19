@@ -560,11 +560,22 @@
     z-index: 300; padding: 40px 20px 36px;
   }
   .call-overlay.open{ display:flex; }
-  .call-overlay #remoteVideo{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
-    background: #0b0d13; display:none;
+  .remote-grid{
+    position:absolute; inset:0; display:none;
+    grid-template-columns: 1fr; gap:2px; background:#000;
   }
-  .call-overlay.video-active #remoteVideo{ display:block; }
+  .call-overlay.video-active.in-call .remote-grid{ display:grid; }
+  .remote-grid.tiles-2{ grid-template-columns: repeat(2, 1fr); }
+  .remote-grid.tiles-3, .remote-grid.tiles-4{ grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+  .remote-tile{ position:relative; width:100%; height:100%; overflow:hidden; background:#12141b; }
+  .remote-tile video{ width:100%; height:100%; object-fit:cover; }
+  .remote-tile .tile-label{
+    position:absolute; left:8px; bottom:8px; font-size:12px; color:#fff;
+    background: rgba(0,0,0,0.45); padding:3px 8px; border-radius:6px;
+  }
+  .remote-tile .tile-avatar{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  }
   .call-overlay #localVideo{
     position:absolute; top:20px; right:16px; width:96px; height:130px;
     border-radius:14px; object-fit:cover; background:#1a1d27;
@@ -579,7 +590,7 @@
   .call-status{ font-size:14px; color: var(--ink-dim); }
   .call-controls{
     position:relative; z-index:2;
-    display:none; gap:22px; align-items:center;
+    display:none; gap:18px; align-items:center; flex-wrap:wrap; justify-content:center;
   }
   .call-overlay.in-call .call-controls{ display:flex; }
   .call-btn{
@@ -600,6 +611,16 @@
   .incoming-call-actions .accept{ background: var(--teal); width:64px; height:64px; }
   @keyframes ringPulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.06);} }
   .call-overlay.incoming .call-avatar{ animation: ringPulse 1.2s ease-in-out infinite; }
+  .gc-contact-list{ max-height:240px; overflow-y:auto; margin-bottom:6px; }
+  .gc-contact-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 9px 4px; border-radius:10px; cursor:pointer;
+  }
+  .gc-contact-row:hover{ background: rgba(255,255,255,0.04); }
+  .gc-contact-row .avatar{ width:32px; height:32px; font-size:12px; flex-shrink:0; }
+  .gc-contact-row span{ flex:1; font-size:14px; color: var(--ink); }
+  .gc-contact-row input{ width:18px; height:18px; accent-color: var(--amber); }
+  .gc-empty{ padding:14px 4px; font-size:13px; color: var(--ink-faint); }
   .image-lightbox{
     position:fixed; inset:0; background: rgba(0,0,0,0.85);
     display:none; align-items:center; justify-content:center;
@@ -747,6 +768,9 @@
       <button class="add-contact-btn" id="openAddContactBtn" title="Add someone by username">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
+      <button class="add-contact-btn" id="openGroupCallBtn" title="Start a group call">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
     </div>
     <div class="filter-row" id="filterRow">
       <button class="filter-chip active" data-filter="all">All</button>
@@ -851,7 +875,7 @@
 </div>
 
 <div class="call-overlay" id="callOverlay">
-  <video id="remoteVideo" autoplay playsinline></video>
+  <div class="remote-grid" id="remoteGrid"></div>
   <video id="localVideo" autoplay playsinline muted></video>
 
   <div class="call-info">
@@ -863,6 +887,9 @@
   <div class="call-controls">
     <button class="call-btn" id="toggleMicBtn" title="Mute">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+    <button class="call-btn" id="toggleSpeakerBtn" title="Speaker">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
     </button>
     <button class="call-btn" id="toggleCamBtn" title="Camera">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
@@ -879,6 +906,22 @@
     <button class="call-btn accept" id="acceptCallBtn" title="Accept">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
     </button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="groupCallOverlay">
+  <div class="modal">
+    <h3>Start a group call</h3>
+    <p class="modal-sub">Pick who to invite from your contacts.</p>
+    <div id="groupCallContactList" class="gc-contact-list"></div>
+    <div class="auth-tabs" style="margin-top:14px;">
+      <button class="auth-tab active" id="gcTypeAudio" data-type="audio">Voice</button>
+      <button class="auth-tab" id="gcTypeVideo" data-type="video">Video</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" id="cancelGroupCall">Cancel</button>
+      <button class="modal-btn solid" id="confirmGroupCall">Start call</button>
+    </div>
   </div>
 </div>
 
@@ -1105,17 +1148,19 @@
   const voiceCallBtn = document.getElementById('voiceCallBtn');
   const videoCallBtn = document.getElementById('videoCallBtn');
   const callOverlay = document.getElementById('callOverlay');
-  const remoteVideo = document.getElementById('remoteVideo');
+  const remoteGrid = document.getElementById('remoteGrid');
   const localVideo = document.getElementById('localVideo');
   const callAvatar = document.getElementById('callAvatar');
   const callName = document.getElementById('callName');
   const callStatus = document.getElementById('callStatus');
   const toggleMicBtn = document.getElementById('toggleMicBtn');
+  const toggleSpeakerBtn = document.getElementById('toggleSpeakerBtn');
   const toggleCamBtn = document.getElementById('toggleCamBtn');
   const endCallBtn = document.getElementById('endCallBtn');
   const incomingCallActions = document.getElementById('incomingCallActions');
   const declineCallBtn = document.getElementById('declineCallBtn');
   const acceptCallBtn = document.getElementById('acceptCallBtn');
+  const openGroupCallBtn = document.getElementById('openGroupCallBtn');
 
   const backBtn = document.getElementById('backBtn');
   const meBadge = document.getElementById('meBadge');
@@ -1386,7 +1431,7 @@
     if(requestsUnsub) requestsUnsub();
     if(currentChatUnsub) currentChatUnsub();
     if(incomingCallUnsub) incomingCallUnsub();
-    if(pc || currentCallChatId) cleanupCall();
+    if(currentRoomId) cleanupCall();
     Object.values(unsubMessageStubs).forEach(fn => fn());
     unsubMessageStubs = {};
     Object.values(profileUnsubs).forEach(fn => fn());
@@ -2131,7 +2176,14 @@
   });
 
   // ============================================================
-  // Voice & video calls (WebRTC, signaled through Firestore)
+  // Voice & video calls — 1:1 AND group (WebRTC mesh, signaled
+  // through Firestore). Every call is a "room" with a list of
+  // participants; a 1:1 call is just a 2-person room. Each pair
+  // of participants opens its own RTCPeerConnection, so a group
+  // call with N people means each device holds N-1 connections.
+  // That's fine for small groups (3-4 people) but gets heavy on
+  // battery/data fast — there's no dedicated server relaying
+  // video here, it's all direct device-to-device.
   // ============================================================
   const ICE_SERVERS = {
     iceServers: [
@@ -2140,34 +2192,40 @@
     ]
   };
 
-  let pc = null;
+  let currentRoomId = null;
+  let currentRoomType = 'audio';
+  let currentRoomParticipants = [];   // all uids in the room, including me
+  let peers = {};                     // otherUid -> { pc, tile }
   let localStream = null;
-  let currentCallChatId = null;
-  let currentCallOtherUid = null;
-  let callRole = null;        // 'caller' | 'callee'
-  let currentCallType = 'audio';
-  let callDocUnsub = null;
-  let remoteCandUnsub = null;
+  let joinedUnsub = null;
+  let roomDocUnsub = null;
   let incomingCallUnsub = null;
   let callTimerInterval = null;
   let callStartTime = null;
   let micOn = true;
   let camOn = true;
-  let pendingIncomingCall = null; // {chatId, otherUid, type, offer}
+  let speakerOn = true;
+  let pendingIncomingCall = null; // {roomId, hostId, hostName, type, participants}
 
-  function callDocRef(chatId){ return db.collection('calls').doc(chatId); }
+  function pairId(a, b){ return [a, b].sort().join('_'); }
+  function roomRef(roomId){ return db.collection('groupCalls').doc(roomId); }
+  function pairRef(roomId, a, b){ return roomRef(roomId).collection('pairs').doc(pairId(a, b)); }
 
+  // ---------- Incoming calls (1:1 and group) ----------
   function listenForIncomingCalls(){
     if(incomingCallUnsub) incomingCallUnsub();
-    incomingCallUnsub = db.collection('calls')
-      .where('calleeId', '==', myUid)
-      .where('status', '==', 'ringing')
+    incomingCallUnsub = db.collection('users').doc(myUid).collection('callInvites')
       .onSnapshot(snap => {
         snap.docChanges().forEach(change => {
           if(change.type !== 'added') return;
+          if(currentRoomId) return; // already on a call, ignore for now
           const d = change.doc.data();
-          if(pc || currentCallChatId) return; // already on a call, ignore
-          pendingIncomingCall = { chatId: change.doc.id, otherUid: d.callerId, type: d.type || 'audio', offer: d.offer };
+          pendingIncomingCall = {
+            roomId: change.doc.id,
+            hostId: d.hostId, hostName: d.hostName || 'Someone',
+            type: d.type || 'audio',
+            participants: d.participants || []
+          };
           showIncomingCallUI();
         });
       }, err => console.error('incoming call listener failed', err));
@@ -2176,154 +2234,210 @@
   function showIncomingCallUI(){
     const call = pendingIncomingCall;
     if(!call) return;
-    currentCallChatId = call.chatId;
-    currentCallOtherUid = call.otherUid;
-    currentCallType = call.type;
-    const contact = users[call.otherUid];
-    const name = contact ? contact.name : 'Someone';
-    callAvatar.style.background = colorFromString(call.otherUid);
-    callAvatar.textContent = initials(name);
-    callName.textContent = name;
-    callStatus.textContent = (call.type === 'video' ? 'Incoming video call' : 'Incoming voice call');
+    currentRoomType = call.type;
+    const isGroup = call.participants.length > 2;
+    callAvatar.style.background = colorFromString(call.hostId);
+    callAvatar.textContent = initials(call.hostName);
+    callName.textContent = isGroup ? (call.hostName + ' + group') : call.hostName;
+    callStatus.textContent = (call.type === 'video' ? 'Incoming video call' : 'Incoming voice call') + (isGroup ? ' · ' + call.participants.length + ' people' : '');
     callOverlay.classList.add('open', 'incoming');
     if(navigator.vibrate){ navigator.vibrate([400,200,400,200,400]); }
   }
 
-  function startCall(otherUid, type){
-    if(pc || currentCallChatId){ alert('You are already on a call.'); return; }
-    const contact = users[otherUid];
-    const name = contact ? contact.name : 'Someone';
-    const chatId = chatIdFor(myUid, otherUid);
-    currentCallChatId = chatId;
-    currentCallOtherUid = otherUid;
-    callRole = 'caller';
-    currentCallType = type;
+  // ---------- Starting a call ----------
+  function startDirectCall(otherUid, type){
+    if(currentRoomId){ alert('You are already on a call.'); return; }
+    beginRoom([otherUid], type);
+  }
 
-    callAvatar.style.background = colorFromString(otherUid);
-    callAvatar.textContent = initials(name);
-    callName.textContent = name;
+  function beginRoom(inviteeUids, type){
+    const roomId = 'room_' + myUid.slice(0,6) + '_' + Date.now();
+    currentRoomId = roomId;
+    currentRoomType = type;
+    currentRoomParticipants = [myUid, ...inviteeUids];
+
+    const isGroup = inviteeUids.length > 1;
+    const label = isGroup ? (inviteeUids.length + ' people') : (users[inviteeUids[0]] ? users[inviteeUids[0]].name : 'Someone');
+    callAvatar.style.background = colorFromString(roomId);
+    callAvatar.textContent = isGroup ? String(currentRoomParticipants.length) : initials(label);
+    callName.textContent = label;
     callStatus.textContent = 'Calling…';
     callOverlay.classList.add('open');
     if(type === 'video') callOverlay.classList.add('video-active');
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' })
-      .then(stream => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        pc = new RTCPeerConnection(ICE_SERVERS);
-        stream.getTracks().forEach(t => pc.addTrack(t, stream));
-        wireRemoteStream();
-
-        const callerCandidates = callDocRef(chatId).collection('callerCandidates');
-        pc.onicecandidate = (e) => {
-          if(e.candidate) callerCandidates.add(e.candidate.toJSON());
-        };
-
-        return pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
-          return callDocRef(chatId).set({
-            callerId: myUid, calleeId: otherUid, type,
-            status: 'ringing',
-            offer: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
-            createdAt: FieldValue.serverTimestamp()
-          });
-        });
-      })
-      .then(() => {
-        callDocUnsub = callDocRef(chatId).onSnapshot(doc => {
-          const d = doc.data();
-          if(!d) return;
-          if(d.status === 'declined'){ callStatus.textContent = 'Call declined'; setTimeout(() => endCall(), 1200); return; }
-          if(d.status === 'ended'){ endCall(); return; }
-          if(d.answer && pc && !pc.currentRemoteDescription){
-            pc.setRemoteDescription(new RTCSessionDescription(d.answer)).then(() => {
-              callStatus.textContent = '00:00';
-              callOverlay.classList.add('in-call');
-              startCallTimer();
-            });
-          }
-        });
-        remoteCandUnsub = callDocRef(chatId).collection('calleeCandidates').onSnapshot(snap => {
-          snap.docChanges().forEach(change => {
-            if(change.type === 'added' && pc){
-              pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
-            }
-          });
-        });
-      })
-      .catch(err => {
-        console.error('start call failed', err);
-        alert("Couldn't start the call — check camera/microphone permission.");
-        cleanupCall();
-      });
+    roomRef(roomId).set({
+      hostId: myUid, type, participants: currentRoomParticipants,
+      status: 'active', createdAt: FieldValue.serverTimestamp()
+    }).then(() => {
+      const writes = inviteeUids.map(uid => db.collection('users').doc(uid).collection('callInvites').doc(roomId).set({
+        hostId: myUid, hostName: myProfile.name, type,
+        participants: currentRoomParticipants, createdAt: FieldValue.serverTimestamp()
+      }));
+      return Promise.all(writes);
+    }).then(() => getLocalMedia(type)).then(() => {
+      joinRoomConnections();
+      callOverlay.classList.add('in-call');
+      callStatus.textContent = '00:00';
+      startCallTimer();
+    }).catch(err => {
+      console.error('start call failed', err);
+      alert("Couldn't start the call — check camera/microphone permission.");
+      cleanupCall();
+    });
   }
 
   function acceptCall(){
     const call = pendingIncomingCall;
     if(!call) return;
-    callRole = 'callee';
+    currentRoomId = call.roomId;
+    currentRoomType = call.type;
+    currentRoomParticipants = call.participants;
     callOverlay.classList.remove('incoming');
     callStatus.textContent = 'Connecting…';
     if(call.type === 'video') callOverlay.classList.add('video-active');
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: call.type === 'video' })
-      .then(stream => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        pc = new RTCPeerConnection(ICE_SERVERS);
-        stream.getTracks().forEach(t => pc.addTrack(t, stream));
-        wireRemoteStream();
+    db.collection('users').doc(myUid).collection('callInvites').doc(call.roomId).delete().catch(() => {});
 
-        const calleeCandidates = callDocRef(call.chatId).collection('calleeCandidates');
-        pc.onicecandidate = (e) => {
-          if(e.candidate) calleeCandidates.add(e.candidate.toJSON());
-        };
-
-        return pc.setRemoteDescription(new RTCSessionDescription(call.offer))
-          .then(() => pc.createAnswer())
-          .then(answer => pc.setLocalDescription(answer))
-          .then(() => callDocRef(call.chatId).set({
-            status: 'accepted',
-            answer: { type: pc.localDescription.type, sdp: pc.localDescription.sdp }
-          }, { merge: true }));
-      })
-      .then(() => {
-        callOverlay.classList.add('in-call');
-        callStatus.textContent = '00:00';
-        startCallTimer();
-
-        callDocUnsub = callDocRef(call.chatId).onSnapshot(doc => {
-          const d = doc.data();
-          if(d && d.status === 'ended') endCall();
-        });
-        remoteCandUnsub = callDocRef(call.chatId).collection('callerCandidates').onSnapshot(snap => {
-          snap.docChanges().forEach(change => {
-            if(change.type === 'added' && pc){
-              pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
-            }
-          });
-        });
-      })
-      .catch(err => {
-        console.error('accept call failed', err);
-        alert("Couldn't join the call — check camera/microphone permission.");
-        cleanupCall();
-      });
+    getLocalMedia(call.type).then(() => {
+      joinRoomConnections();
+      callOverlay.classList.add('in-call');
+      callStatus.textContent = '00:00';
+      startCallTimer();
+    }).catch(err => {
+      console.error('accept call failed', err);
+      alert("Couldn't join the call — check camera/microphone permission.");
+      cleanupCall();
+    });
   }
 
   function declineCall(){
     const call = pendingIncomingCall;
     if(call){
-      callDocRef(call.chatId).set({ status: 'declined' }, { merge: true }).catch(() => {});
+      db.collection('users').doc(myUid).collection('callInvites').doc(call.roomId).delete().catch(() => {});
     }
     cleanupCall();
   }
 
-  function wireRemoteStream(){
-    const remoteStream = new MediaStream();
-    remoteVideo.srcObject = remoteStream;
-    pc.ontrack = (e) => { e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t)); };
+  function getLocalMedia(type){
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' })
+      .then(stream => { localStream = stream; localVideo.srcObject = stream; });
   }
 
+  // ---------- Mesh connection management ----------
+  function joinRoomConnections(){
+    // Watch the room doc for the authoritative participant list (in case it
+    // changes) and end the call for everyone if the host ends it.
+    roomDocUnsub = roomRef(currentRoomId).onSnapshot(doc => {
+      const d = doc.data();
+      if(!d || d.status === 'ended'){ endCall(); return; }
+      currentRoomParticipants = d.participants || currentRoomParticipants;
+      updateGridLayout();
+    });
+
+    // Announce that I've joined, and watch who else has joined so far.
+    roomRef(currentRoomId).collection('joined').doc(myUid).set({ at: FieldValue.serverTimestamp() });
+    joinedUnsub = roomRef(currentRoomId).collection('joined').onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        const otherUid = change.doc.id;
+        if(otherUid === myUid) return;
+        if(change.type === 'removed'){ teardownPeer(otherUid); return; }
+        if(!peers[otherUid]) connectToPeer(otherUid);
+      });
+    });
+  }
+
+  function connectToPeer(otherUid){
+    const iAmInitiator = myUid < otherUid; // simple, consistent tie-break rule
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    peers[otherUid] = { pc, unsub: null };
+
+    if(localStream){ localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); }
+
+    const remoteStream = new MediaStream();
+    pc.ontrack = (e) => { e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t)); };
+    addRemoteTile(otherUid, remoteStream);
+
+    const pRef = pairRef(currentRoomId, myUid, otherUid);
+    const myCandidates = pRef.collection(iAmInitiator ? 'callerCandidates' : 'calleeCandidates');
+    const theirCandidates = pRef.collection(iAmInitiator ? 'calleeCandidates' : 'callerCandidates');
+
+    pc.onicecandidate = (e) => { if(e.candidate) myCandidates.add(e.candidate.toJSON()); };
+
+    const candUnsub = theirCandidates.onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if(change.type === 'added'){
+          pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(() => {});
+        }
+      });
+    });
+    peers[otherUid].unsub = candUnsub;
+
+    if(iAmInitiator){
+      pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
+        return pRef.set({ offer: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } }, { merge: true });
+      });
+      peers[otherUid].docUnsub = pRef.onSnapshot(doc => {
+        const d = doc.data();
+        if(d && d.answer && !pc.currentRemoteDescription){
+          pc.setRemoteDescription(new RTCSessionDescription(d.answer)).catch(() => {});
+        }
+      });
+    } else {
+      peers[otherUid].docUnsub = pRef.onSnapshot(doc => {
+        const d = doc.data();
+        if(d && d.offer && !pc.currentRemoteDescription){
+          pc.setRemoteDescription(new RTCSessionDescription(d.offer))
+            .then(() => pc.createAnswer())
+            .then(answer => pc.setLocalDescription(answer))
+            .then(() => pRef.set({ answer: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } }, { merge: true }))
+            .catch(() => {});
+        }
+      });
+    }
+  }
+
+  function teardownPeer(otherUid){
+    const p = peers[otherUid];
+    if(!p) return;
+    if(p.unsub) p.unsub();
+    if(p.docUnsub) p.docUnsub();
+    p.pc.close();
+    removeRemoteTile(otherUid);
+    delete peers[otherUid];
+  }
+
+  // ---------- Video tile grid ----------
+  function addRemoteTile(otherUid, stream){
+    const contact = users[otherUid];
+    const name = contact ? contact.name : 'Someone';
+    const tile = document.createElement('div');
+    tile.className = 'remote-tile';
+    tile.id = 'tile_' + otherUid;
+    tile.innerHTML = `
+      <video autoplay playsinline></video>
+      <div class="tile-avatar" style="background:${colorFromString(otherUid)}">${initials(name)}</div>
+      <div class="tile-label">${escapeHtml(name)}</div>
+    `;
+    const videoEl = tile.querySelector('video');
+    videoEl.srcObject = stream;
+    videoEl.addEventListener('loadedmetadata', () => {
+      const hasVideo = stream.getVideoTracks().length > 0;
+      tile.querySelector('.tile-avatar').style.display = hasVideo ? 'none' : 'flex';
+    });
+    remoteGrid.appendChild(tile);
+    updateGridLayout();
+  }
+  function removeRemoteTile(otherUid){
+    const tile = document.getElementById('tile_' + otherUid);
+    if(tile) tile.remove();
+    updateGridLayout();
+  }
+  function updateGridLayout(){
+    const count = remoteGrid.children.length;
+    remoteGrid.className = 'remote-grid tiles-' + Math.min(count, 4);
+  }
+
+  // ---------- Call lifecycle ----------
   function startCallTimer(){
     callStartTime = Date.now();
     callTimerInterval = setInterval(() => {
@@ -2335,32 +2449,38 @@
   }
 
   function endCall(){
-    if(currentCallChatId){
-      callDocRef(currentCallChatId).set({ status: 'ended' }, { merge: true }).catch(() => {});
+    if(currentRoomId){
+      roomRef(currentRoomId).collection('joined').doc(myUid).delete().catch(() => {});
+      // If I'm the last one out, mark the room ended so no one keeps ringing.
+      roomRef(currentRoomId).collection('joined').get().then(snap => {
+        if(snap.empty){
+          roomRef(currentRoomId).set({ status: 'ended' }, { merge: true }).catch(() => {});
+        }
+      });
     }
     cleanupCall();
   }
 
   function cleanupCall(){
     if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
-    if(callDocUnsub){ callDocUnsub(); callDocUnsub = null; }
-    if(remoteCandUnsub){ remoteCandUnsub(); remoteCandUnsub = null; }
-    if(pc){ pc.close(); pc = null; }
+    if(roomDocUnsub){ roomDocUnsub(); roomDocUnsub = null; }
+    if(joinedUnsub){ joinedUnsub(); joinedUnsub = null; }
+    Object.keys(peers).forEach(uid => teardownPeer(uid));
+    peers = {};
+    remoteGrid.innerHTML = '';
     if(localStream){ localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-    remoteVideo.srcObject = null;
     localVideo.srcObject = null;
     callOverlay.classList.remove('open', 'incoming', 'in-call', 'video-active');
-    currentCallChatId = null;
-    currentCallOtherUid = null;
-    callRole = null;
+    currentRoomId = null;
+    currentRoomParticipants = [];
     pendingIncomingCall = null;
     micOn = true; camOn = true;
     toggleMicBtn.classList.remove('active-off');
     toggleCamBtn.classList.remove('active-off');
   }
 
-  voiceCallBtn.addEventListener('click', () => { if(currentChatUid) startCall(currentChatUid, 'audio'); });
-  videoCallBtn.addEventListener('click', () => { if(currentChatUid) startCall(currentChatUid, 'video'); });
+  voiceCallBtn.addEventListener('click', () => { if(currentChatUid) startDirectCall(currentChatUid, 'audio'); });
+  videoCallBtn.addEventListener('click', () => { if(currentChatUid) startDirectCall(currentChatUid, 'video'); });
   endCallBtn.addEventListener('click', endCall);
   declineCallBtn.addEventListener('click', declineCall);
   acceptCallBtn.addEventListener('click', acceptCall);
@@ -2375,6 +2495,63 @@
     camOn = !camOn;
     localStream.getVideoTracks().forEach(t => t.enabled = camOn);
     toggleCamBtn.classList.toggle('active-off', !camOn);
+  });
+  toggleSpeakerBtn.addEventListener('click', () => {
+    // Real earpiece/speaker routing isn't exposed to web pages; this offers
+    // the best available approximation — switching audio output device when
+    // more than one is available (e.g. phone speaker vs a connected headset).
+    speakerOn = !speakerOn;
+    toggleSpeakerBtn.classList.toggle('active-off', !speakerOn);
+    if(!navigator.mediaDevices.enumerateDevices || !remoteGrid) return;
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      const outputs = devices.filter(d => d.kind === 'audiooutput');
+      const target = outputs.find(d => speakerOn ? /speaker/i.test(d.label) : !/speaker/i.test(d.label)) || outputs[0];
+      if(!target) return;
+      document.querySelectorAll('.remote-tile video').forEach(v => {
+        if(v.setSinkId) v.setSinkId(target.deviceId).catch(() => {});
+      });
+    }).catch(() => {});
+  });
+
+  // ---------- Group call picker ----------
+  const groupCallOverlay = document.getElementById('groupCallOverlay');
+  const groupCallContactList = document.getElementById('groupCallContactList');
+  const gcTypeAudio = document.getElementById('gcTypeAudio');
+  const gcTypeVideo = document.getElementById('gcTypeVideo');
+  const cancelGroupCall = document.getElementById('cancelGroupCall');
+  const confirmGroupCall = document.getElementById('confirmGroupCall');
+  let gcSelectedType = 'audio';
+
+  openGroupCallBtn.addEventListener('click', () => {
+    if(currentRoomId){ alert('You are already on a call.'); return; }
+    const contactIds = Object.keys(users);
+    groupCallContactList.innerHTML = contactIds.length === 0
+      ? '<div class="gc-empty">Add some contacts first.</div>'
+      : '';
+    contactIds.forEach(uid => {
+      const u = users[uid];
+      const row = document.createElement('label');
+      row.className = 'gc-contact-row';
+      row.innerHTML = `
+        <input type="checkbox" value="${uid}">
+        <div class="avatar" style="background:${colorFromString(uid)}">${initials(u.name)}</div>
+        <span>${escapeHtml(u.name)}</span>
+      `;
+      groupCallContactList.appendChild(row);
+    });
+    gcSelectedType = 'audio';
+    gcTypeAudio.classList.add('active'); gcTypeVideo.classList.remove('active');
+    groupCallOverlay.classList.add('open');
+  });
+  gcTypeAudio.addEventListener('click', () => { gcSelectedType = 'audio'; gcTypeAudio.classList.add('active'); gcTypeVideo.classList.remove('active'); });
+  gcTypeVideo.addEventListener('click', () => { gcSelectedType = 'video'; gcTypeVideo.classList.add('active'); gcTypeAudio.classList.remove('active'); });
+  cancelGroupCall.addEventListener('click', () => groupCallOverlay.classList.remove('open'));
+  groupCallOverlay.addEventListener('click', (e) => { if(e.target === groupCallOverlay) groupCallOverlay.classList.remove('open'); });
+  confirmGroupCall.addEventListener('click', () => {
+    const checked = Array.from(groupCallContactList.querySelectorAll('input:checked')).map(i => i.value);
+    if(checked.length === 0){ alert('Pick at least one person to call.'); return; }
+    groupCallOverlay.classList.remove('open');
+    beginRoom(checked, gcSelectedType);
   });
 
 })();
