@@ -946,10 +946,6 @@
 (function(){
   "use strict";
 
-  // ============================================================
-  // 1. PASTE YOUR FIREBASE CONFIG HERE (from Firebase Console →
-  //    Project settings → General → Your apps → SDK setup)
-  // ============================================================
   const firebaseConfig = {
     apiKey: "AIzaSyC0GWZkak35-3880hacoiWrhapbnRGW5-U",
     authDomain: "chating-3b366.firebaseapp.com",
@@ -965,14 +961,10 @@
   const db = firebase.firestore();
   const FieldValue = firebase.firestore.FieldValue;
 
-  // Offline support: cache data locally and queue writes made while offline,
-  // syncing automatically once the connection comes back. This can only be
-  // enabled in one browser tab at a time per device.
   db.enablePersistence({ synchronizeTabs: true }).catch(err => {
     console.warn('Offline persistence not enabled:', err.code);
   });
 
-  // ---------- Offline banner ----------
   const offlineBanner = document.getElementById('offlineBanner');
   function updateOnlineStatus(){
     offlineBanner.classList.toggle('show', !navigator.onLine);
@@ -981,12 +973,6 @@
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // ============================================================
-  // End-to-end encryption (Web Crypto API: ECDH P-256 + AES-GCM)
-  // Private keys never leave this device. Only public keys go to
-  // Firestore. Message content is encrypted before it's written,
-  // so the database only ever holds unreadable ciphertext.
-  // ============================================================
   const E2E_DB_NAME = 'thread_e2e_keys';
   const E2E_STORE = 'keys';
 
@@ -1096,7 +1082,6 @@
     });
   }
 
-  // ---------- Helpers ----------
   const palette = ['#e8a33d','#3e7c6b','#5a7fd6','#c9578a','#5aa8a0','#c97f1f','#7d6fd1'];
   function colorFromString(str){
     let h = 0;
@@ -1135,7 +1120,6 @@
   }
   function chatIdFor(a, b){ return [a,b].sort().join('_'); }
 
-  // ---------- DOM ----------
   const authLoading = document.getElementById('authLoading');
   const authScreen = document.getElementById('authScreen');
   const authSub = document.getElementById('authSub');
@@ -1222,7 +1206,6 @@
   const requestsListEl = document.getElementById('requestsListEl');
   const closeRequests = document.getElementById('closeRequests');
 
-  // ---------- Auth screen mode ----------
   let mode = 'signin';
   function setMode(m){
     mode = m;
@@ -1241,7 +1224,6 @@
   }
   authCreateBtn.addEventListener('click', () => setMode(mode === 'signin' ? 'signup' : 'signin'));
 
-  // ---------- Google sign-in ----------
   const googleBtn = document.getElementById('googleBtn');
   googleBtn.addEventListener('click', () => {
     authError.classList.remove('show');
@@ -1296,7 +1278,6 @@
 
   signOutBtn.addEventListener('click', () => auth.signOut());
 
-  // ---------- Saved test accounts (local to this device, for quick switching while testing) ----------
   const SAVED_ACC_KEY = 'thread_test_accounts';
   function loadSavedAccounts(){
     try { return JSON.parse(localStorage.getItem(SAVED_ACC_KEY) || '[]'); }
@@ -1351,7 +1332,6 @@
   });
   renderSavedAccounts();
 
-  // ---------- App state ----------
   let myUid = null;
   let myProfile = null;
   let users = {};            // contactUid -> {id, name, username, lastActive(ms)}
@@ -1368,8 +1348,6 @@
   let myContactMeta = {};    // contactUid -> {muted: bool}
   let statusTicker = null;
 
-  // Safety net: if auth never resolves (e.g. a network/config issue),
-  // stop showing a blank "Loading…" forever and explain what's wrong.
   setTimeout(() => {
     if(authLoading.style.display !== 'none'){
       authLoading.textContent = "Couldn't connect. Check your internet connection, or that the Firebase config and Firestore/Authentication setup are correct, then reload.";
@@ -1423,7 +1401,6 @@
     }).catch(err => console.error('profile check failed', err));
   }
 
-  // ---------- Username picker ----------
   function validUsername(u){ return /^[a-z0-9_]{3,20}$/.test(u); }
   usernameSubmit.addEventListener('click', () => {
     const raw = usernameInput.value.trim().toLowerCase();
@@ -1485,16 +1462,12 @@
     menuName.textContent = myProfile.name;
     menuUsername.textContent = '@' + myProfile.username;
 
-    // Set up (or load) this device's encryption keys before wiring up any
-    // chat listeners, so nothing tries to encrypt/decrypt before keys exist.
     ensureMyKeyPair().catch(err => console.error('key setup failed', err)).then(() => {
 
-    // Presence: mark active now, then every 25s while open
     touchPresence();
     statusTicker = setInterval(() => { touchPresence(); renderList(); if(currentChatUid) renderHeadStatus(); }, 25000);
     document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') touchPresence(); });
 
-    // Live list of contacts I've added
     contactsUnsub = db.collection('users').doc(myUid).collection('contacts').onSnapshot(snap => {
       snap.docChanges().forEach(change => {
         const contactUid = change.doc.id;
@@ -1528,7 +1501,6 @@
       renderList();
     }, err => console.error('contacts snapshot error', err));
 
-    // Live list of incoming contact requests
     requestsUnsub = db.collection('users').doc(myUid).collection('incomingRequests').onSnapshot(snap => {
       snap.docChanges().forEach(change => {
         const fromUid = change.doc.id;
@@ -1542,7 +1514,6 @@
       renderRequests();
     }, err => console.error('requests snapshot error', err));
 
-    // Listen for incoming voice/video calls addressed to me
     listenForIncomingCalls();
 
     }); // end ensureMyKeyPair().then()
@@ -1598,7 +1569,6 @@
     unsubMessageStubs[uid] = unsub;
   }
 
-  // ---------- Browser notifications (works while the browser is open/backgrounded) ----------
   function updateNotifyBtnState(){
     if(!('Notification' in window)) { notifyBtn.style.display = 'none'; return; }
     notifyBtn.classList.toggle('notif-on', Notification.permission === 'granted');
@@ -1640,7 +1610,6 @@
     catch(e){}
   }
 
-  // ---------- Render list ----------
   function renderList(){
     const q = query.trim().toLowerCase();
     const others = Object.values(users).filter(u => u.id !== myUid);
@@ -1690,7 +1659,6 @@
     });
   }
 
-  // ---------- Open chat ----------
   function openChat(uid){
     currentChatUid = uid;
     setLastRead(uid);
@@ -1805,7 +1773,6 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  // ---------- Sending ----------
   let pendingPhoto = null; // { dataUrl, sizeLabel }
 
   function sendMessage(){
@@ -1830,8 +1797,6 @@
       if(encText) payload.encText = encText;
       if(encImage) payload.encImage = encImage;
       if(!encText && !encImage){
-        // Encryption isn't ready yet (e.g. key exchange failed) — fail loudly
-        // rather than silently sending in plain text.
         alert("Couldn't secure this message — check your connection and try again.");
         return;
       }
@@ -1851,7 +1816,6 @@
   });
   sendBtn.addEventListener('click', sendMessage);
 
-  // ---------- Photo attach + compress ----------
   function clearPendingPhoto(){
     pendingPhoto = null;
     photoPreviewBar.style.display = 'none';
@@ -1929,7 +1893,6 @@
     });
   }
 
-  // ---------- Image lightbox ----------
   function openLightbox(src){
     lightboxImg.src = src;
     imageLightbox.classList.add('open');
@@ -1939,7 +1902,6 @@
     lightboxImg.src = '';
   });
 
-  // ---------- Message long-press actions (delete for me / everyone) ----------
   function attachLongPress(el, msg, onFired){
     if(!el || msg.deleted) return null;
     const state = { fired: false };
@@ -2000,7 +1962,6 @@
     }
   }
 
-  // ---------- Controls ----------
   backBtn.addEventListener('click', () => app.classList.remove('chat-open'));
 
   filterRow.addEventListener('click', (e) => {
@@ -2022,7 +1983,6 @@
     if(!accountMenu.contains(e.target) && e.target !== meBadge) accountMenu.classList.remove('open');
   });
 
-  // ---------- Add contact by username ----------
   function openAddContact(){
     addContactInput.value = '';
     addContactError.classList.remove('show');
@@ -2078,7 +2038,6 @@
       });
   });
 
-  // ---------- Contact requests (accept/decline) ----------
   function renderRequests(){
     const ids = Object.keys(incomingRequests);
     if(ids.length === 0){
@@ -2127,7 +2086,6 @@
   closeRequests.addEventListener('click', () => requestsOverlay.classList.remove('open'));
   requestsOverlay.addEventListener('click', (e) => { if(e.target === requestsOverlay) requestsOverlay.classList.remove('open'); });
 
-  // ---------- Chat options: mute / delete / block / remove ----------
   function updateMuteBtnLabel(){
     if(!currentChatUid) return;
     const muted = myContactMeta[currentChatUid] && myContactMeta[currentChatUid].muted;
@@ -2208,16 +2166,6 @@
       .catch(err => console.error('remove contact failed', err));
   });
 
-  // ============================================================
-  // Voice & video calls — 1:1 AND group (WebRTC mesh, signaled
-  // through Firestore). Every call is a "room" with a list of
-  // participants; a 1:1 call is just a 2-person room. Each pair
-  // of participants opens its own RTCPeerConnection, so a group
-  // call with N people means each device holds N-1 connections.
-  // That's fine for small groups (3-4 people) but gets heavy on
-  // battery/data fast — there's no dedicated server relaying
-  // video here, it's all direct device-to-device.
-  // ============================================================
   const ICE_SERVERS = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -2244,7 +2192,6 @@
   function roomRef(roomId){ return db.collection('groupCalls').doc(roomId); }
   function pairRef(roomId, a, b){ return roomRef(roomId).collection('pairs').doc(pairId(a, b)); }
 
-  // ---------- Incoming calls (1:1 and group) ----------
   function listenForIncomingCalls(){
     if(incomingCallUnsub) incomingCallUnsub();
     incomingCallUnsub = db.collection('users').doc(myUid).collection('callInvites')
@@ -2277,7 +2224,6 @@
     if(navigator.vibrate){ navigator.vibrate([400,200,400,200,400]); }
   }
 
-  // ---------- Starting a call ----------
   function startDirectCall(otherUid, type){
     if(currentRoomId){ alert('You are already on a call.'); return; }
     beginRoom([otherUid], type);
@@ -2309,8 +2255,6 @@
       return Promise.all(writes);
     }).then(() => getLocalMedia(type)).then(() => {
       joinRoomConnections();
-      // Stays on "Calling…" until someone else actually joins (see
-      // joinRoomConnections, which flips to the in-call UI then).
     }).catch(err => {
       console.error('start call failed', err);
       alert("Couldn't start the call — check camera/microphone permission.");
@@ -2332,7 +2276,6 @@
 
     getLocalMedia(call.type).then(() => {
       joinRoomConnections();
-      // Stays on "Connecting…" until a peer connection actually forms.
     }).catch(err => {
       console.error('accept call failed', err);
       alert("Couldn't join the call — check camera/microphone permission.");
@@ -2353,11 +2296,8 @@
       .then(stream => { localStream = stream; localVideo.srcObject = stream; });
   }
 
-  // ---------- Mesh connection management ----------
   let inCallStarted = false;
   function joinRoomConnections(){
-    // Watch the room doc for the authoritative participant list (in case it
-    // changes) and end the call for everyone if the host ends it.
     roomDocUnsub = roomRef(currentRoomId).onSnapshot(doc => {
       const d = doc.data();
       if(!d || d.status === 'ended'){ endCall(); return; }
@@ -2365,7 +2305,6 @@
       updateGridLayout();
     });
 
-    // Announce that I've joined, and watch who else has joined so far.
     roomRef(currentRoomId).collection('joined').doc(myUid).set({ at: FieldValue.serverTimestamp() });
     joinedUnsub = roomRef(currentRoomId).collection('joined').onSnapshot(snap => {
       snap.docChanges().forEach(change => {
@@ -2443,7 +2382,6 @@
     delete peers[otherUid];
   }
 
-  // ---------- Video tile grid ----------
   function addRemoteTile(otherUid, stream){
     const contact = users[otherUid];
     const name = contact ? contact.name : 'Someone';
@@ -2474,7 +2412,6 @@
     remoteGrid.className = 'remote-grid tiles-' + Math.min(count, 4);
   }
 
-  // ---------- Call lifecycle ----------
   function startCallTimer(){
     callStartTime = Date.now();
     callTimerInterval = setInterval(() => {
@@ -2488,7 +2425,6 @@
   function endCall(){
     if(currentRoomId){
       roomRef(currentRoomId).collection('joined').doc(myUid).delete().catch(() => {});
-      // If I'm the last one out, mark the room ended so no one keeps ringing.
       roomRef(currentRoomId).collection('joined').get().then(snap => {
         if(snap.empty){
           roomRef(currentRoomId).set({ status: 'ended' }, { merge: true }).catch(() => {});
@@ -2535,9 +2471,6 @@
     toggleCamBtn.classList.toggle('active-off', !camOn);
   });
   toggleSpeakerBtn.addEventListener('click', () => {
-    // Real earpiece/speaker routing isn't exposed to web pages; this offers
-    // the best available approximation — switching audio output device when
-    // more than one is available (e.g. phone speaker vs a connected headset).
     speakerOn = !speakerOn;
     toggleSpeakerBtn.classList.toggle('active-off', !speakerOn);
     if(!navigator.mediaDevices.enumerateDevices || !remoteGrid) return;
@@ -2551,7 +2484,6 @@
     }).catch(() => {});
   });
 
-  // ---------- Group call picker ----------
   const groupCallOverlay = document.getElementById('groupCallOverlay');
   const groupCallContactList = document.getElementById('groupCallContactList');
   const gcTypeAudio = document.getElementById('gcTypeAudio');
@@ -2611,11 +2543,8 @@
           };
         }
 
-        // A waiting worker already exists from a previous visit (e.g. app was
-        // closed before the update was applied).
         if(reg.waiting){ showBannerFor(reg.waiting); }
 
-        // A new worker started installing during this visit.
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if(!newWorker) return;
@@ -2626,13 +2555,11 @@
           });
         });
 
-        // Check for updates periodically while the app stays open.
         setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
       }).catch((err) => {
         console.error('Service worker registration failed', err);
       });
 
-      // Once the new worker takes control, reload so the fresh code runs.
       let reloading = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if(reloading) return;
