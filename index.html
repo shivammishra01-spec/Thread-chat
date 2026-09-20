@@ -52,6 +52,19 @@
     padding: 6px 14px; font-size:12.5px; font-weight:700;
     cursor:pointer;
   }
+  .offline-banner{
+    position:fixed; left:0; right:0; top:0;
+    z-index:199;
+    background: #4b4d57;
+    color:#fff;
+    display:none;
+    align-items:center; justify-content:center;
+    padding: 9px 16px; text-align:center;
+    font-size:13px; font-weight:600;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .offline-banner.show{ display:flex; }
+  .update-banner.show ~ .offline-banner{ top:42px; }
   html,body{ height:100%; }
   body{
     margin:0;
@@ -661,6 +674,10 @@
   <button id="updateBannerBtn">Update</button>
 </div>
 
+<div class="offline-banner" id="offlineBanner">
+  <span>You're offline — messages will send once you're back online.</span>
+</div>
+
 <div class="auth-loading" id="authLoading">
   <div class="loading-wrap">
     <div class="loading-mark">
@@ -947,6 +964,22 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const FieldValue = firebase.firestore.FieldValue;
+
+  // Offline support: cache data locally and queue writes made while offline,
+  // syncing automatically once the connection comes back. This can only be
+  // enabled in one browser tab at a time per device.
+  db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    console.warn('Offline persistence not enabled:', err.code);
+  });
+
+  // ---------- Offline banner ----------
+  const offlineBanner = document.getElementById('offlineBanner');
+  function updateOnlineStatus(){
+    offlineBanner.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
 
   // ============================================================
   // End-to-end encryption (Web Crypto API: ECDH P-256 + AES-GCM)
