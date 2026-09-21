@@ -2234,8 +2234,13 @@
           // just quietly clean it up.
           roomRef(roomId).get().then(roomDoc => {
             const rd = roomDoc.data();
-            if(!rd || rd.status !== 'active'){
+            const ageMs = rd && rd.createdAt && rd.createdAt.toMillis ? (Date.now() - rd.createdAt.toMillis()) : Infinity;
+            const isStale = !rd || rd.status !== 'active' || ageMs > 2 * 60 * 1000;
+            if(isStale){
               inviteRef.delete().catch(() => {});
+              if(rd && rd.status === 'active' && ageMs > 2 * 60 * 1000){
+                roomRef(roomId).set({ status: 'ended' }, { merge: true }).catch(() => {});
+              }
               return;
             }
             if(currentRoomId) return; // already on a call, ignore for now
@@ -2529,6 +2534,15 @@
   }
 
   voiceCallBtn.addEventListener('click', () => { if(currentChatUid) startDirectCall(currentChatUid, 'audio'); });
+  window.addEventListener('pagehide', () => {
+    if(currentRoomId){
+      // Best-effort: if the app closes mid-call, try to mark the room ended
+      // so no one is left ringing a call that no longer exists. Not fully
+      // reliable on mobile (a force-close won't always run this), which is
+      // why the staleness check above also exists as a backup.
+      roomRef(currentRoomId).set({ status: 'ended' }, { merge: true }).catch(() => {});
+    }
+  });
   videoCallBtn.addEventListener('click', () => { if(currentChatUid) startDirectCall(currentChatUid, 'video'); });
   endCallBtn.addEventListener('click', endCall);
   declineCallBtn.addEventListener('click', declineCall);
