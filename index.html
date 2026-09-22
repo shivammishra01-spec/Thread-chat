@@ -2276,6 +2276,19 @@
     callStatus.textContent = (call.type === 'video' ? 'Incoming video call' : 'Incoming voice call') + (isGroup ? ' · ' + call.participants.length + ' people' : '');
     callOverlay.classList.add('open', 'incoming');
     if(navigator.vibrate){ navigator.vibrate([400,200,400,200,400]); }
+    notifyIncomingCall(call, isGroup);
+  }
+
+  let activeCallNotification = null;
+  function notifyIncomingCall(call, isGroup){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    const title = isGroup ? (call.hostName + ' + group is calling') : (call.hostName + ' is calling');
+    const body = call.type === 'video' ? 'Incoming video call' : 'Incoming voice call';
+    try{
+      const notif = new Notification(title, { body, requireInteraction: true, tag: 'call-' + call.roomId });
+      notif.onclick = () => { window.focus(); notif.close(); };
+      activeCallNotification = notif;
+    } catch(e){ console.error('call notification failed', e); }
   }
 
   // ---- Starting a call (1:1 or group) ----
@@ -2387,9 +2400,21 @@
 
     if(localStream){ localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); }
 
-    const remoteStream = new MediaStream();
-    pc.ontrack = (e) => { e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t)); };
-    addRemoteTile(otherUid, remoteStream);
+    // Attach the browser's own stream object directly once real media
+    // arrives, rather than pre-building an empty MediaStream and mutating
+    // it afterwards — some phones never notice tracks added that way.
+    pc.ontrack = (e) => {
+      const tile = document.getElementById('tile_' + otherUid);
+      if(tile){
+        const videoEl = tile.querySelector('video');
+        if(videoEl.srcObject !== e.streams[0]){
+          videoEl.srcObject = e.streams[0];
+          videoEl.play().catch(() => {});
+        }
+      } else {
+        addRemoteTile(otherUid, e.streams[0]);
+      }
+    };
 
     const pRef = pairRef(currentRoomId, myUid, otherUid);
     const myCandidates = pRef.collection(iAmInitiator ? 'callerCandidates' : 'calleeCandidates');
@@ -2470,6 +2495,7 @@
     `;
     const videoEl = tile.querySelector('video');
     videoEl.srcObject = stream;
+    videoEl.play().catch(() => {});
     videoEl.addEventListener('loadedmetadata', () => {
       const hasVideo = stream.getVideoTracks().length > 0;
       tile.querySelector('.tile-avatar').style.display = hasVideo ? 'none' : 'flex';
@@ -2514,6 +2540,7 @@
   }
 
   function cleanupCall(){
+    if(activeCallNotification){ activeCallNotification.close(); activeCallNotification = null; }
     if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
     if(roomDocUnsub){ roomDocUnsub(); roomDocUnsub = null; }
     if(joinedUnsub){ joinedUnsub(); joinedUnsub = null; }
