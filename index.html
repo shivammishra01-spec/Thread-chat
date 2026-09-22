@@ -551,6 +551,16 @@
   .row .bubble.has-image{ padding: 5px; }
   .row .bubble.has-image .msg-caption{ padding: 6px 8px 2px; }
   .deleted-bubble{ font-style: italic; color: var(--ink-faint) !important; background: var(--panel-2) !important; }
+  .call-log-row{
+    display:flex; align-items:center; gap:7px;
+    justify-content:center; align-self:center;
+    margin: 6px auto 14px; padding: 7px 14px;
+    background: var(--panel-2); border-radius: 999px;
+    font-size:12.5px; color: var(--ink-dim);
+    max-width: fit-content;
+  }
+  .call-log-row.missed{ color: var(--danger); }
+  .call-log-row .call-log-time{ color: var(--ink-faint); margin-left:2px; }
   .bubble{
     user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none;
     -webkit-touch-callout:none;
@@ -1555,6 +1565,17 @@
             return;
           }
 
+          if(d.callLog){
+            const icon = d.callLog.type === 'video' ? '🎥' : '📞';
+            const label = d.callLog.status === 'missed'
+              ? (d.senderId === myUid ? 'No answer' : 'Missed call')
+              : (d.callLog.type === 'video' ? 'Video call' : 'Voice call');
+            const msg = { text: icon + ' ' + label, senderId: d.senderId, atMs: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now() };
+            lastMessages[uid] = msg;
+            renderList();
+            return;
+          }
+
           const textP = d.encText ? decryptForContact(uid, d.encText) : Promise.resolve(d.text);
           const hasImageP = d.encImage ? decryptForContact(uid, d.encImage).then(v => !!v) : Promise.resolve(!!d.image);
           Promise.all([textP, hasImageP]).then(([text, hasImage]) => {
@@ -1704,6 +1725,7 @@
             rawImage: d.image || null,
             encText: d.encText || null,
             encImage: d.encImage || null,
+            callLog: d.callLog || null,
             deleted: !!d.deleted,
             hiddenFor: d.hiddenFor || [],
             t: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
@@ -1711,7 +1733,7 @@
         }).filter(m => !m.hiddenFor.includes(myUid));
 
         Promise.all(rawDocs.map(m => {
-          if(m.deleted) return Promise.resolve(m);
+          if(m.deleted || m.callLog) return Promise.resolve(m);
           const textP = m.encText ? decryptForContact(uid, m.encText) : Promise.resolve(m.rawText);
           const imageP = m.encImage ? decryptForContact(uid, m.encImage) : Promise.resolve(m.rawImage);
           return Promise.all([textP, imageP]).then(([text, image]) => {
@@ -1754,6 +1776,24 @@
       const row = document.createElement('div');
       row.className = 'row ' + m.who;
       let longPressState = null;
+      if(m.callLog){
+        const cl = m.callLog;
+        const icon = cl.type === 'video'
+          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'
+          : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.36 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
+        let label;
+        if(cl.status === 'missed'){
+          label = (m.who === 'me' ? 'No answer' : 'Missed') + ' · ' + (cl.type === 'video' ? 'video call' : 'voice call');
+        } else {
+          const mins = Math.floor(cl.durationSec / 60), secs = cl.durationSec % 60;
+          label = (cl.type === 'video' ? 'Video call' : 'Voice call') + ' · ' + mins + ':' + String(secs).padStart(2,'0');
+        }
+        const div = document.createElement('div');
+        div.className = 'call-log-row' + (cl.status === 'missed' ? ' missed' : '');
+        div.innerHTML = `${icon}<span>${escapeHtml(label)}</span><span class="call-log-time">${fmtTime(m.t)}</span>`;
+        messagesEl.appendChild(div);
+        return;
+      }
       if(m.deleted){
         row.innerHTML = `<div class="bubble deleted-bubble">This message was deleted</div>`;
       } else if(m.image && isValidImageDataUrl(m.image)){
@@ -2540,6 +2580,24 @@
   }
 
   function cleanupCall(){
+    // Log this call into the 1:1 chat history before we reset everything.
+    if(currentRoomId && currentRoomParticipants.length === 2){
+      const otherUid = currentRoomParticipants.find(u => u !== myUid);
+      if(otherUid){
+        const chatId = chatIdFor(myUid, otherUid);
+        const durationSec = inCallStarted ? Math.floor((Date.now() - callStartTime) / 1000) : 0;
+        db.collection('chats').doc(chatId).collection('messages').doc('calllog_' + currentRoomId).set({
+          senderId: myUid,
+          callLog: {
+            type: currentRoomType,
+            status: inCallStarted ? 'completed' : 'missed',
+            durationSec
+          },
+          createdAt: FieldValue.serverTimestamp()
+        }, { merge: true }).catch(err => console.error('call log write failed', err));
+      }
+    }
+
     if(activeCallNotification){ activeCallNotification.close(); activeCallNotification = null; }
     if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
     if(roomDocUnsub){ roomDocUnsub(); roomDocUnsub = null; }
