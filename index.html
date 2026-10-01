@@ -1034,14 +1034,32 @@
   }
 
   let myPrivateKey = null;   // CryptoKey, kept only in memory + IndexedDB (this device)
-  const sharedKeyCache = {}; // contactUid -> Promise<CryptoKey>
+  let myPublicJwk = null;    // public half of myPrivateKey (always derived from it, so they match)
+  const sharedKeyCache = {}; // contactUid -> Promise<CryptoKey> (only successful results are kept)
+  const contactPubJwkCache = {}; // contactUid -> the public key JWK used for that shared key
+  const embeddedKeyCache = {};   // "x.y" of a public key embedded in a message -> Promise<CryptoKey>
+
+  function pubOnly(j){ return { kty: j.kty, crv: j.crv, x: j.x, y: j.y }; }
 
   function ensureMyKeyPair(){
     const storageKey = 'privateKey_' + myUid;
+    // Ask the browser not to wipe our keys under storage pressure (a common cause of "Unable to decrypt").
+    try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){}
     return idbGet(storageKey).then(existingPriv => {
       if(existingPriv){
         myPrivateKey = existingPriv;
-        return;
+        return crypto.subtle.exportKey('jwk', existingPriv)
+          .then(j => { myPublicJwk = pubOnly(j); })
+          .catch(() => {})
+          .then(() => {
+            if(!myPublicJwk) return;
+            // If our public key never made it to the server (e.g. we were offline when it was created), publish it now.
+            return db.collection('users').doc(myUid).get().then(doc => {
+              if(doc.exists && !doc.data().publicKeyJwk){
+                return db.collection('users').doc(myUid).set({ publicKeyJwk: myPublicJwk }, {merge:true});
+              }
+            }).catch(() => {});
+          });
       }
       return crypto.subtle.generateKey(
         { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
@@ -1052,6 +1070,7 @@
           crypto.subtle.exportKey('jwk', pair.publicKey)
         ]);
       }).then(([, jwk]) => {
+        myPublicJwk = pubOnly(jwk);
         return db.collection('users').doc(myUid).set({ publicKeyJwk: jwk }, {merge:true});
       });
     });
@@ -1063,27 +1082,51 @@
     );
   }
 
+  function deriveAesKey(theirJwk){
+    if(!myPrivateKey) return Promise.resolve(null);
+    return importPublicKey(pubOnly(theirJwk)).then(theirPub => {
+      return crypto.subtle.deriveKey(
+        { name: 'ECDH', public: theirPub },
+        myPrivateKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    });
+  }
+
   function getSharedKey(contactUid){
     if(sharedKeyCache[contactUid]) return sharedKeyCache[contactUid];
     const p = db.collection('users').doc(contactUid).get().then(doc => {
       const jwk = doc.exists ? doc.data().publicKeyJwk : null;
       if(!jwk || !myPrivateKey) return null;
-      return importPublicKey(jwk).then(theirPub => {
-        return crypto.subtle.deriveKey(
-          { name: 'ECDH', public: theirPub },
-          myPrivateKey,
-          { name: 'AES-GCM', length: 256 },
-          false,
-          ['encrypt', 'decrypt']
-        );
-      });
+      return deriveAesKey(jwk).then(key => { contactPubJwkCache[contactUid] = pubOnly(jwk); return key; });
     }).catch(err => { console.error('key exchange failed', err); return null; });
     sharedKeyCache[contactUid] = p;
+    // Never keep a failure around, otherwise one bad moment (offline, key not published yet) breaks this chat until reload.
+    p.then(k => { if(!k && sharedKeyCache[contactUid] === p) delete sharedKeyCache[contactUid]; });
+    return p;
+  }
+
+  // Keys that were embedded in a message when it was sent, so it stays readable even if the other person's key changed later.
+  function getEmbeddedKey(jwk){
+    if(!jwk || !jwk.x || !jwk.y) return Promise.resolve(null);
+    const id = jwk.x + '.' + jwk.y;
+    if(embeddedKeyCache[id]) return embeddedKeyCache[id];
+    const p = deriveAesKey(jwk).catch(() => null);
+    embeddedKeyCache[id] = p;
+    p.then(k => { if(!k && embeddedKeyCache[id] === p) delete embeddedKeyCache[id]; });
     return p;
   }
 
   function bufToB64(buf){
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const bytes = new Uint8Array(buf);
+    let bin = '';
+    const CH = 0x8000;
+    for(let i = 0; i < bytes.length; i += CH){
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    }
+    return btoa(bin);
   }
   function b64ToBuf(b64){
     const bin = atob(b64);
@@ -1103,15 +1146,19 @@
     });
   }
 
-  function decryptForContact(contactUid, enc){
+  function decryptForContact(contactUid, enc, keyMeta, who){
     if(!enc || !enc.iv || !enc.ct) return Promise.resolve(null);
-    return getSharedKey(contactUid).then(key => {
-      if(!key) return null;
+    const attempt = (key) => {
+      if(!key) return Promise.resolve(null);
       return crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: b64ToBuf(enc.iv) }, key, b64ToBuf(enc.ct)
-      ).then(buf => new TextDecoder().decode(buf))
-        .catch(() => null);
-    });
+      ).then(buf => new TextDecoder().decode(buf)).catch(() => null);
+    };
+    // 1) the public key the other person had when this message was sent (new messages carry it)
+    const embedded = keyMeta ? (who === 'me' ? keyMeta.r : keyMeta.s) : null;
+    const viaEmbedded = embedded ? getEmbeddedKey(embedded).then(attempt) : Promise.resolve(null);
+    // 2) fall back to their current key (older messages)
+    return viaEmbedded.then(res => res != null ? res : getSharedKey(contactUid).then(attempt));
   }
 
   const palette = ['#e8a33d','#3e7c6b','#5a7fd6','#c9578a','#5aa8a0','#c97f1f','#7d6fd1'];
@@ -1565,6 +1612,9 @@
     users = {}; lastMessages = {}; incomingRequests = {}; myContactMeta = {}; currentChatUid = null;
     myPrivateKey = null;
     Object.keys(sharedKeyCache).forEach(k => delete sharedKeyCache[k]);
+    Object.keys(contactPubJwkCache).forEach(k => delete contactPubJwkCache[k]);
+    Object.keys(embeddedKeyCache).forEach(k => delete embeddedKeyCache[k]);
+    myPublicJwk = null;
   }
 
   let appStarted = false;
@@ -1600,7 +1650,11 @@
           profileUnsubs[contactUid] = db.collection('users').doc(contactUid).onSnapshot(pdoc => {
             if(pdoc.exists){
               const d = pdoc.data();
+              const newKeyX = d.publicKeyJwk ? d.publicKeyJwk.x : null;
+              const oldKeyX = users[contactUid] ? users[contactUid].keyX : undefined;
+              if(oldKeyX !== newKeyX){ delete sharedKeyCache[contactUid]; delete contactPubJwkCache[contactUid]; }
               users[contactUid] = {
+                keyX: newKeyX,
                 id: contactUid,
                 name: d.name || d.username || 'Someone',
                 username: d.username || '',
@@ -1672,8 +1726,9 @@
             return;
           }
 
-          const textP = d.encText ? decryptForContact(uid, d.encText) : Promise.resolve(d.text);
-          const hasImageP = d.encImage ? decryptForContact(uid, d.encImage).then(v => !!v) : Promise.resolve(!!d.image);
+          const whoP = d.senderId === myUid ? 'me' : 'them';
+          const textP = d.encText ? decryptForContact(uid, d.encText, d.encKeys, whoP) : Promise.resolve(d.text);
+          const hasImageP = d.encImage ? decryptForContact(uid, d.encImage, d.encKeys, whoP).then(v => !!v) : Promise.resolve(!!d.image);
           Promise.all([textP, hasImageP]).then(([text, hasImage]) => {
             const previewText = hasImage ? ('📷 Photo' + (text ? ': ' + text : '')) : (text || '🔒 Unable to decrypt');
             const msg = {
@@ -1820,6 +1875,7 @@
             rawImage: d.image || null,
             encText: d.encText || null,
             encImage: d.encImage || null,
+            encKeys: d.encKeys || null,
             callLog: d.callLog || null,
             deleted: !!d.deleted,
             hiddenFor: d.hiddenFor || [],
@@ -1829,8 +1885,8 @@
 
         Promise.all(rawDocs.map(m => {
           if(m.deleted || m.callLog) return Promise.resolve(m);
-          const textP = m.encText ? decryptForContact(uid, m.encText) : Promise.resolve(m.rawText);
-          const imageP = m.encImage ? decryptForContact(uid, m.encImage) : Promise.resolve(m.rawImage);
+          const textP = m.encText ? decryptForContact(uid, m.encText, m.encKeys, m.who) : Promise.resolve(m.rawText);
+          const imageP = m.encImage ? decryptForContact(uid, m.encImage, m.encKeys, m.who) : Promise.resolve(m.rawImage);
           return Promise.all([textP, imageP]).then(([text, image]) => {
             m.text = (text == null && m.encText) ? '🔒 Unable to decrypt' : (text || '');
             m.image = image;
@@ -1952,7 +2008,17 @@
         alert("Couldn't secure this message — check your connection and try again.");
         return;
       }
-      return db.collection('chats').doc(chatId).collection('messages').add(payload);
+      if(myPublicJwk && contactPubJwkCache[contactUid]){
+        payload.encKeys = { s: myPublicJwk, r: contactPubJwkCache[contactUid] };
+      }
+      const col = db.collection('chats').doc(chatId).collection('messages');
+      return col.add(payload).catch(err => {
+        if(payload.encKeys && err && err.code === 'permission-denied'){
+          delete payload.encKeys;   // server rules don't allow the extra field; send without it
+          return col.add(payload);
+        }
+        throw err;
+      });
     }).catch(err => console.error('send failed', err));
   }
 
