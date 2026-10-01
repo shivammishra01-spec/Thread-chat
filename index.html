@@ -1456,7 +1456,7 @@
   let query = '';
   let contactsUnsub = null;
   let requestsUnsub = null;
-  let incomingRequests = {}; // fromUid -> {fromUid, fromName, fromUsername}
+  let incomingRequests = {}; // fromUid -> {fromUid, fromName, fromUsername, fromPhoto}
   let myContactMeta = {};    // contactUid -> {muted: bool}
   let statusTicker = null;
 
@@ -1623,7 +1623,7 @@
           delete incomingRequests[fromUid];
         } else {
           const d = change.doc.data();
-          incomingRequests[fromUid] = { fromUid, fromName: d.fromName || 'Someone', fromUsername: d.fromUsername || '' };
+          incomingRequests[fromUid] = { fromUid, fromName: d.fromName || 'Someone', fromUsername: d.fromUsername || '', fromPhoto: d.fromPhoto || '' };
         }
       });
       renderRequests();
@@ -2187,12 +2187,14 @@
           confirmAddContact.disabled = false;
           return;
         }
-        db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set({
+        const reqData = {
           fromUid: myUid,
           fromName: myProfile.name,
           fromUsername: myProfile.username,
           sentAt: FieldValue.serverTimestamp()
-        }).then(() => {
+        };
+        if(myProfile.photo) reqData.fromPhoto = myProfile.photo;
+        db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set(reqData).then(() => {
           confirmAddContact.disabled = false;
           closeAddContact();
         }).catch(err => {
@@ -2224,7 +2226,7 @@
       const row = document.createElement('div');
       row.className = 'request-row';
       row.innerHTML = `
-        <div class="avatar" style="background:${colorFromString(fromUid)}">${initials(r.fromName)}</div>
+        <div class="avatar" style="${avatarStyle(fromUid, r.fromPhoto)}">${avatarLabel(r.fromName, r.fromPhoto)}</div>
         <div class="req-name">${escapeHtml(r.fromName)}<small>@${escapeHtml(r.fromUsername)}</small></div>
         <div class="req-actions">
           <button class="req-accept">Accept</button>
