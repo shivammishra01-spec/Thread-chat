@@ -411,6 +411,14 @@
     font-size:13px; font-weight:600; cursor:pointer;
   }
   .signout-btn:hover{ background: rgba(217,112,90,0.1); }
+  .photo-btn{
+    width:100%; padding:9px 10px; border-radius:10px; margin-bottom:8px;
+    background:none; border:1px solid var(--line); color: var(--amber);
+    font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .photo-btn:hover{ background: rgba(232,163,61,0.08); }
+  .photo-btn.remove{ color: var(--ink-dim); }
+  .photo-btn:disabled{ opacity:.5; cursor:default; }
 
   .search-wrap{ padding: 0 16px 14px; }
   .search-box{
@@ -785,6 +793,9 @@
         <div class="account-menu" id="accountMenu">
           <div class="account-menu-name" id="menuName"></div>
           <div class="account-menu-email" id="menuUsername"></div>
+          <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+          <button class="photo-btn" id="changeAvatarBtn">Change profile photo</button>
+          <button class="photo-btn remove" id="removeAvatarBtn" style="display:none;">Remove photo</button>
           <button class="signout-btn" id="signOutBtn">Sign out</button>
         </div>
       </div>
@@ -1113,6 +1124,27 @@
   function initials(name){
     return (name||'?').trim().split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase();
   }
+  // ---- Profile photo helpers ----
+  function applyAvatar(el, uid, name, photo, textOverride){
+    el.style.background = colorFromString(uid);
+    if(photo && isValidImageDataUrl(photo)){
+      el.style.backgroundImage = 'url("' + photo + '")';
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.textContent = '';
+    } else {
+      el.textContent = textOverride != null ? textOverride : initials(name);
+    }
+  }
+  function avatarStyle(uid, photo){
+    if(photo && isValidImageDataUrl(photo)){
+      return 'background:' + colorFromString(uid) + ' url(\'' + photo + '\') center/cover no-repeat';
+    }
+    return 'background:' + colorFromString(uid);
+  }
+  function avatarLabel(name, photo){
+    return (photo && isValidImageDataUrl(photo)) ? '' : initials(name);
+  }
   function escapeHtml(s){
     const d = document.createElement('div');
     d.textContent = s == null ? '' : s;
@@ -1207,6 +1239,9 @@
   const menuName = document.getElementById('menuName');
   const menuUsername = document.getElementById('menuUsername');
   const signOutBtn = document.getElementById('signOutBtn');
+  const avatarInput = document.getElementById('avatarInput');
+  const changeAvatarBtn = document.getElementById('changeAvatarBtn');
+  const removeAvatarBtn = document.getElementById('removeAvatarBtn');
 
   const usernameScreen = document.getElementById('usernameScreen');
   const usernameInput = document.getElementById('usernameInput');
@@ -1300,6 +1335,59 @@
   });
 
   signOutBtn.addEventListener('click', () => auth.signOut());
+
+  // ---- Profile photo: pick, crop to a small square, save on my user doc ----
+  function renderMyAvatar(uid){
+    applyAvatar(meBadge, uid || myUid, myProfile.name, myProfile.photo);
+    removeAvatarBtn.style.display = myProfile.photo ? 'block' : 'none';
+    changeAvatarBtn.textContent = myProfile.photo ? 'Change profile photo' : 'Add profile photo';
+  }
+  function makeAvatarDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not read that image.'));
+        img.onload = () => {
+          const SIZE = 256;
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = SIZE; canvas.height = SIZE;
+          canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function saveMyPhoto(photo){
+    return db.collection('users').doc(myUid).set({ photo: photo }, { merge: true }).then(() => {
+      myProfile.photo = photo;
+      renderMyAvatar();
+    });
+  }
+  changeAvatarBtn.addEventListener('click', () => avatarInput.click());
+  avatarInput.addEventListener('change', () => {
+    const file = avatarInput.files && avatarInput.files[0];
+    avatarInput.value = '';
+    if(!file) return;
+    if(!/^image\//.test(file.type)){ alert('Please choose an image file.'); return; }
+    changeAvatarBtn.disabled = true;
+    changeAvatarBtn.textContent = 'Saving…';
+    makeAvatarDataUrl(file)
+      .then(saveMyPhoto)
+      .catch(err => { console.error('photo save failed', err); alert('Could not save your photo. Please try another image.'); })
+      .finally(() => { changeAvatarBtn.disabled = false; renderMyAvatar(); });
+  });
+  removeAvatarBtn.addEventListener('click', () => {
+    removeAvatarBtn.disabled = true;
+    saveMyPhoto('')
+      .catch(err => { console.error('photo remove failed', err); alert('Could not remove your photo.'); })
+      .finally(() => { removeAvatarBtn.disabled = false; });
+  });
 
   const SAVED_ACC_KEY = 'thread_test_accounts';
   // ---- Saved test accounts (quick-switch while testing) ----
@@ -1483,9 +1571,8 @@
   function startApp(user, profileData){
     if(appStarted) return;
     appStarted = true;
-    myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '' };
-    meBadge.textContent = initials(myProfile.name);
-    meBadge.style.background = colorFromString(user.uid);
+    myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '', photo: (profileData && profileData.photo) || '' };
+    renderMyAvatar(user.uid);
     menuName.textContent = myProfile.name;
     menuUsername.textContent = '@' + myProfile.username;
 
@@ -1517,6 +1604,7 @@
                 id: contactUid,
                 name: d.name || d.username || 'Someone',
                 username: d.username || '',
+                photo: d.photo || '',
                 lastActive: d.lastActive && d.lastActive.toMillis ? d.lastActive.toMillis() : null
               };
             }
@@ -1682,8 +1770,8 @@
       const item = document.createElement('div');
       item.className = 'thread-item' + (u.id === currentChatUid ? ' active' : '');
       item.innerHTML = `
-        <div class="avatar" style="background:${colorFromString(u.id)}">
-          ${initials(u.name)}
+        <div class="avatar" style="${avatarStyle(u.id, u.photo)}">
+          ${avatarLabel(u.name, u.photo)}
           <span class="dot ${statusOf(u.id)}"></span>
         </div>
         <div class="thread-mid">
@@ -1710,8 +1798,7 @@
     app.classList.add('has-selection');
     app.classList.add('chat-open');
 
-    headAvatar.style.background = colorFromString(uid);
-    headAvatar.textContent = initials(u.name);
+    applyAvatar(headAvatar, uid, u.name, u.photo);
     headNameText.textContent = u.name;
     renderHeadStatus();
     updateMuteBtnLabel();
@@ -2334,8 +2421,7 @@
     if(!call) return;
     currentRoomType = call.type;
     const isGroup = call.participants.length > 2;
-    callAvatar.style.background = colorFromString(call.hostId);
-    callAvatar.textContent = initials(call.hostName);
+    applyAvatar(callAvatar, call.hostId, call.hostName, users[call.hostId] && users[call.hostId].photo);
     callName.textContent = isGroup ? (call.hostName + ' + group') : call.hostName;
     callStatus.textContent = (call.type === 'video' ? 'Incoming video call' : 'Incoming voice call') + (isGroup ? ' · ' + call.participants.length + ' people' : '');
     callOverlay.classList.add('open', 'incoming');
@@ -2369,8 +2455,7 @@
 
     const isGroup = inviteeUids.length > 1;
     const label = isGroup ? (inviteeUids.length + ' people') : (users[inviteeUids[0]] ? users[inviteeUids[0]].name : 'Someone');
-    callAvatar.style.background = colorFromString(roomId);
-    callAvatar.textContent = isGroup ? String(currentRoomParticipants.length) : initials(label);
+    applyAvatar(callAvatar, roomId, label, isGroup ? '' : (users[inviteeUids[0]] && users[inviteeUids[0]].photo), isGroup ? String(currentRoomParticipants.length) : null);
     callName.textContent = label;
     callStatus.textContent = 'Calling…';
     callOverlay.classList.add('open');
@@ -2554,7 +2639,7 @@
     tile.id = 'tile_' + otherUid;
     tile.innerHTML = `
       <video autoplay playsinline></video>
-      <div class="tile-avatar" style="background:${colorFromString(otherUid)}">${initials(name)}</div>
+      <div class="tile-avatar" style="${avatarStyle(otherUid, contact && contact.photo)}">${avatarLabel(name, contact && contact.photo)}</div>
       <div class="tile-label">${escapeHtml(name)}</div>
     `;
     const videoEl = tile.querySelector('video');
@@ -2702,7 +2787,7 @@
       row.className = 'gc-contact-row';
       row.innerHTML = `
         <input type="checkbox" value="${uid}">
-        <div class="avatar" style="background:${colorFromString(uid)}">${initials(u.name)}</div>
+        <div class="avatar" style="${avatarStyle(uid, u.photo)}">${avatarLabel(u.name, u.photo)}</div>
         <span>${escapeHtml(u.name)}</span>
       `;
       groupCallContactList.appendChild(row);
