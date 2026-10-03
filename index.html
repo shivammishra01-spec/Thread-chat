@@ -6,6 +6,15 @@
 <title>Thread — Chat</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#12141b">
+<script>
+  (function(){
+    try{
+      var pref = localStorage.getItem('thread_theme') || 'dark';
+      var light = pref === 'light' || (pref === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+    }catch(e){ document.documentElement.setAttribute('data-theme', 'dark'); }
+  })();
+</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,6 +41,32 @@
     --teal-bright: #57a58f;
     --danger: #d9705a;
     --sidebar-w: 340px;
+    --hover: rgba(255,255,255,0.04);
+    --hover-2: rgba(255,255,255,0.06);
+    --wp-dim: rgba(10,12,18,0.35);
+    --wp-chip: rgba(26,29,39,0.78);
+    --danger-text: #f0a290;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --bg: #f3f4f8;
+    --panel: #ffffff;
+    --panel-2: #eceef4;
+    --line: #d9dce6;
+    --ink: #1b1d27;
+    --ink-dim: #555a6e;
+    --ink-faint: #848899;
+    --amber: #d9901a;
+    --amber-dim: #f0d7a8;
+    --teal: #2f7a66;
+    --teal-bright: #2a8a70;
+    --danger: #c8503a;
+    --hover: rgba(20,24,40,0.05);
+    --hover-2: rgba(20,24,40,0.07);
+    --wp-dim: rgba(255,255,255,0.28);
+    --wp-chip: rgba(255,255,255,0.86);
+    --danger-text: #b3412c;
+    color-scheme: light;
   }
   *{ box-sizing:border-box; }
   .update-banner{
@@ -82,7 +117,7 @@
   }
   h1,h2,h3,.brand,.contact-name,.msg-name{ font-family: 'Space Grotesk', 'Inter', sans-serif; }
   button{ font-family:inherit; }
-  ::selection{ background: var(--amber-dim); color: #fff; }
+  ::selection{ background: var(--amber-dim); color: var(--ink); }
 
   /* ---------- Auth screen ---------- */
   .auth-screen{
@@ -192,7 +227,7 @@
 
   /* ---------- Username picker screen ---------- */
   .username-hint{ font-size:12px; color: var(--ink-faint); margin: -10px 0 16px; }
-  .username-taken{ color:#f0a290; }
+  .username-taken{ color: var(--danger-text); }
   .username-ok{ color: var(--teal-bright); }
 
   /* ---------- Add-contact modal ---------- */
@@ -313,7 +348,7 @@
   }
   .auth-error{
     background: rgba(217,112,90,0.12);
-    color: #f0a290;
+    color: var(--danger-text);
     border: 1px solid rgba(217,112,90,0.3);
     border-radius: 8px;
     padding: 9px 12px;
@@ -420,6 +455,27 @@
   .photo-btn.remove{ color: var(--ink-dim); }
   .photo-btn:disabled{ opacity:.5; cursor:default; }
 
+  /* Appearance: theme + chat wallpaper */
+  .modal.wide{ width:min(420px, 92vw); max-height:86vh; overflow-y:auto; }
+  .ap-label{ font-size:12px; font-weight:600; color: var(--ink-dim); text-transform:uppercase; letter-spacing:.06em; margin: 14px 0 8px; }
+  .seg{ display:flex; gap:4px; background: var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:4px; }
+  .seg button{ flex:1; background:none; border:none; color: var(--ink-dim); font-size:13.5px; font-weight:600; padding:8px; border-radius:7px; cursor:pointer; font-family:inherit; }
+  .seg button.active{ background: var(--amber); color:#221900; }
+  .wp-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; }
+  .wp-tile{
+    aspect-ratio: 3 / 4; border-radius:10px; border:2px solid var(--line);
+    background-color: var(--panel-2); color: var(--ink-dim);
+    font-size:12px; font-weight:600; cursor:pointer; padding:0; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    background-position:center; background-size:cover;
+  }
+  .wp-tile.selected{ border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber-dim); }
+  .wp-tile.photo-tile{ font-size:20px; }
+  .chat.has-wallpaper .day-sep{ align-self:center; background: var(--wp-chip); color: var(--ink-dim); padding:3px 12px; border-radius:10px; }
+  .chat.has-wallpaper .msg-meta{ background: var(--wp-chip); color: var(--ink-dim); padding:1px 8px; border-radius:8px; }
+  .chat.has-wallpaper .msg-meta.me{ align-self:flex-end; }
+  .chat.has-wallpaper .msg-meta.them{ align-self:flex-start; }
+
   .search-wrap{ padding: 0 16px 14px; }
   .search-box{
     display:flex; align-items:center; gap:8px;
@@ -444,7 +500,7 @@
     display:flex; align-items:center; gap:12px; padding: 10px 10px;
     border-radius: 12px; cursor:pointer; position:relative; transition: background .12s;
   }
-  .thread-item:hover{ background: rgba(255,255,255,0.03); }
+  .thread-item:hover{ background: var(--hover); }
   .thread-item.active{ background: var(--panel-2); }
   .thread-item.active::before{
     content:''; position:absolute; left:-8px; top:14px; bottom:14px; width:3px;
@@ -504,7 +560,7 @@
     color: var(--ink);
     font-family:inherit;
   }
-  .chat-options-item:hover{ background: rgba(255,255,255,0.05); }
+  .chat-options-item:hover{ background: var(--hover-2); }
   .chat-options-item.danger{ color: var(--danger); }
   .chat-options-divider{ height:1px; background: var(--line); margin: 5px 2px; }
 
@@ -589,7 +645,7 @@
     color: var(--ink); margin-bottom:8px;
     font-family:inherit;
   }
-  .msg-action-item:hover{ background: rgba(255,255,255,0.05); }
+  .msg-action-item:hover{ background: var(--hover-2); }
   .msg-action-item.danger{ color: var(--danger); }
 
   /* ---------- Calls ---------- */
@@ -656,7 +712,7 @@
     display:flex; align-items:center; gap:10px;
     padding: 9px 4px; border-radius:10px; cursor:pointer;
   }
-  .gc-contact-row:hover{ background: rgba(255,255,255,0.04); }
+  .gc-contact-row:hover{ background: var(--hover); }
   .gc-contact-row .avatar{ width:32px; height:32px; font-size:12px; flex-shrink:0; }
   .gc-contact-row span{ flex:1; font-size:14px; color: var(--ink); }
   .gc-contact-row input{ width:18px; height:18px; accent-color: var(--amber); }
@@ -794,6 +850,7 @@
           <div class="account-menu-name" id="menuName"></div>
           <div class="account-menu-email" id="menuUsername"></div>
           <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+          <button class="photo-btn" id="openAppearanceBtn">Theme &amp; wallpaper</button>
           <button class="photo-btn" id="changeAvatarBtn">Change profile photo</button>
           <button class="photo-btn remove" id="removeAvatarBtn" style="display:none;">Remove photo</button>
           <button class="signout-btn" id="signOutBtn">Sign out</button>
@@ -919,6 +976,25 @@
       </div>
     </div>
   </main>
+</div>
+
+<div id="appearanceOverlay" class="modal-overlay">
+  <div class="modal wide">
+    <h3>Theme &amp; wallpaper</h3>
+    <p class="modal-sub">Saved on this device only.</p>
+    <div class="ap-label">Theme</div>
+    <div class="seg" id="themeSeg">
+      <button data-pref="auto">Auto</button>
+      <button data-pref="dark">Dark</button>
+      <button data-pref="light">Light</button>
+    </div>
+    <div class="ap-label">Chat wallpaper</div>
+    <div class="wp-grid" id="wpGrid"></div>
+    <input type="file" id="wallpaperInput" accept="image/*" style="display:none;">
+    <div class="modal-actions" style="margin-top:18px;">
+      <button class="modal-btn solid" id="closeAppearance">Done</button>
+    </div>
+  </div>
 </div>
 
 <div class="call-overlay" id="callOverlay">
@@ -1382,6 +1458,155 @@
   });
 
   signOutBtn.addEventListener('click', () => auth.signOut());
+
+  // ---- Appearance: dark / light theme and chat wallpaper (per device) ----
+  const THEME_KEY = 'thread_theme';
+  const WALLPAPER_KEY = 'thread_wallpaper';
+  const WALLPAPER_IDB_KEY = 'wallpaper_custom';
+  const appearanceOverlay = document.getElementById('appearanceOverlay');
+  const themeSeg = document.getElementById('themeSeg');
+  const wpGrid = document.getElementById('wpGrid');
+  const wallpaperInput = document.getElementById('wallpaperInput');
+  const chatPaneEl = document.getElementById('chatPane');
+  const lightQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+  let customWallpaper = null;   // data URL of the user's own wallpaper photo
+
+  const WALLPAPERS = [
+    { id:'aurora', name:'Aurora', size:'cover', dim:true,
+      image:'radial-gradient(circle at 20% 15%, rgba(62,124,107,.75), transparent 45%), radial-gradient(circle at 85% 80%, rgba(232,163,61,.5), transparent 50%), radial-gradient(circle at 75% 15%, rgba(91,110,225,.5), transparent 45%), linear-gradient(#1c2030,#1c2030)' },
+    { id:'dusk', name:'Dusk', size:'cover', dim:true, image:'linear-gradient(160deg,#3a2a5c,#8a4a6b 55%,#e08a5a)' },
+    { id:'forest', name:'Forest', size:'cover', dim:true, image:'linear-gradient(160deg,#0f3d33,#2d6a4f 60%,#95b46a)' },
+    { id:'ocean', name:'Ocean', size:'cover', dim:true, image:'linear-gradient(170deg,#0b2545,#13518a 55%,#3aa6b9)' },
+    { id:'sand', name:'Sand', size:'cover', dim:true, image:'linear-gradient(160deg,#d9c3a0,#efe2c8)' },
+    { id:'dots', name:'Dots', size:'22px 22px', dim:false, repeat:'repeat',
+      image:'radial-gradient(circle, rgba(140,145,170,.38) 1.4px, transparent 1.8px)' }
+  ];
+
+  function getThemePref(){
+    try{ return localStorage.getItem(THEME_KEY) || 'dark'; }catch(e){ return 'dark'; }
+  }
+  function applyTheme(pref){
+    const light = pref === 'light' || (pref === 'auto' && lightQuery && lightQuery.matches);
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', light ? '#f3f4f8' : '#12141b');
+    themeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.pref === pref));
+  }
+  themeSeg.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      try{ localStorage.setItem(THEME_KEY, b.dataset.pref); }catch(e){}
+      applyTheme(b.dataset.pref);
+    });
+  });
+  if(lightQuery){
+    const onSystemChange = () => { if(getThemePref() === 'auto') applyTheme('auto'); };
+    if(lightQuery.addEventListener) lightQuery.addEventListener('change', onSystemChange);
+    else if(lightQuery.addListener) lightQuery.addListener(onSystemChange);
+  }
+
+  function getWallpaperId(){
+    try{ return localStorage.getItem(WALLPAPER_KEY) || 'none'; }catch(e){ return 'none'; }
+  }
+  function applyWallpaper(id){
+    let image = null, size = 'cover', repeat = 'no-repeat', dim = true;
+    if(id === 'custom' && customWallpaper && isValidImageDataUrl(customWallpaper)){
+      image = 'url("' + customWallpaper + '")';
+    } else {
+      const wp = WALLPAPERS.find(w => w.id === id);
+      if(wp){ image = wp.image; size = wp.size; repeat = wp.repeat || 'no-repeat'; dim = wp.dim; }
+    }
+    if(!image){
+      chatPaneEl.classList.remove('has-wallpaper');
+      ['backgroundImage','backgroundSize','backgroundPosition','backgroundRepeat'].forEach(k => messagesEl.style[k] = '');
+      return;
+    }
+    chatPaneEl.classList.add('has-wallpaper');
+    const dimLayer = 'linear-gradient(var(--wp-dim), var(--wp-dim))';
+    messagesEl.style.backgroundImage = dim ? (dimLayer + ', ' + image) : image;
+    messagesEl.style.backgroundSize = dim ? ('auto, ' + size) : size;
+    messagesEl.style.backgroundRepeat = dim ? ('no-repeat, ' + repeat) : repeat;
+    messagesEl.style.backgroundPosition = 'center';
+  }
+  function setWallpaper(id){
+    try{ localStorage.setItem(WALLPAPER_KEY, id); }catch(e){}
+    applyWallpaper(id);
+    renderWallpaperGrid();
+  }
+  function renderWallpaperGrid(){
+    const current = getWallpaperId();
+    wpGrid.innerHTML = '';
+    const addTile = (id, label, style, extraClass) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wp-tile' + (extraClass ? ' ' + extraClass : '') + (current === id ? ' selected' : '');
+      b.title = label; b.setAttribute('aria-label', label);
+      if(style) b.setAttribute('style', style);
+      return b;
+    };
+    const none = addTile('none', 'No wallpaper', '');
+    none.textContent = 'None';
+    none.addEventListener('click', () => setWallpaper('none'));
+    wpGrid.appendChild(none);
+    WALLPAPERS.forEach(w => {
+      const t = addTile(w.id, w.name, 'background-image:' + w.image + ';background-size:' + w.size + ';background-repeat:' + (w.repeat || 'no-repeat') + ';');
+      t.addEventListener('click', () => setWallpaper(w.id));
+      wpGrid.appendChild(t);
+    });
+    const hasCustom = customWallpaper && isValidImageDataUrl(customWallpaper);
+    const photo = addTile('custom', hasCustom ? 'Your photo (tap again to change)' : 'Upload a photo',
+      hasCustom ? 'background-image:url("' + customWallpaper + '")' : '', 'photo-tile');
+    if(!hasCustom) photo.textContent = '+';
+    photo.addEventListener('click', () => {
+      if(hasCustom && getWallpaperId() !== 'custom') setWallpaper('custom');
+      else wallpaperInput.click();
+    });
+    wpGrid.appendChild(photo);
+  }
+  wallpaperInput.addEventListener('change', () => {
+    const file = wallpaperInput.files && wallpaperInput.files[0];
+    wallpaperInput.value = '';
+    if(!file) return;
+    if(!/^image\//.test(file.type)){ alert('Please choose an image file.'); return; }
+    const reader = new FileReader();
+    reader.onerror = () => alert('Could not read that image.');
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => alert('Could not read that image.');
+      img.onload = () => {
+        const MAX = 1280;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL('image/jpeg', 0.8);
+        customWallpaper = data;
+        idbSet(WALLPAPER_IDB_KEY, data).catch(err => console.warn('wallpaper not persisted', err));
+        setWallpaper('custom');
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('openAppearanceBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    accountMenu.classList.remove('open');
+    applyTheme(getThemePref());
+    renderWallpaperGrid();
+    appearanceOverlay.classList.add('open');
+  });
+  document.getElementById('closeAppearance').addEventListener('click', () => appearanceOverlay.classList.remove('open'));
+  appearanceOverlay.addEventListener('click', (e) => { if(e.target === appearanceOverlay) appearanceOverlay.classList.remove('open'); });
+
+  applyTheme(getThemePref());
+  idbGet(WALLPAPER_IDB_KEY).then(v => { customWallpaper = (typeof v === 'string') ? v : null; })
+    .catch(() => {})
+    .then(() => {
+      let id = getWallpaperId();
+      if(id === 'custom' && !customWallpaper) id = 'none';
+      applyWallpaper(id);
+    });
 
   // ---- Profile photo: pick, crop to a small square, save on my user doc ----
   function renderMyAvatar(uid){
@@ -1968,7 +2193,7 @@
       const isLastInGroup = (i === msgs.length-1) || msgs[i+1].who !== m.who;
       if(isLastInGroup){
         const meta = document.createElement('div');
-        meta.className = 'msg-meta';
+        meta.className = 'msg-meta ' + (m.who === 'me' ? 'me' : 'them');
         meta.style.textAlign = m.who === 'me' ? 'right' : 'left';
         meta.textContent = fmtTime(m.t);
         messagesEl.appendChild(meta);
