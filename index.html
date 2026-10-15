@@ -446,14 +446,15 @@
     font-size:13px; font-weight:600; cursor:pointer;
   }
   .signout-btn:hover{ background: rgba(217,112,90,0.1); }
-  .photo-btn{
+  .menu-btn{
     width:100%; padding:9px 10px; border-radius:10px; margin-bottom:8px;
     background:none; border:1px solid var(--line); color: var(--amber);
     font-size:13px; font-weight:600; cursor:pointer;
   }
-  .photo-btn:hover{ background: rgba(232,163,61,0.08); }
-  .photo-btn.remove{ color: var(--ink-dim); }
-  .photo-btn:disabled{ opacity:.5; cursor:default; }
+  .app-version{ font-size:11px; color: var(--ink-faint); text-align:center; margin-top:10px; }
+  .menu-btn:hover{ background: rgba(232,163,61,0.08); }
+  .menu-btn.remove{ color: var(--ink-dim); }
+  .menu-btn:disabled{ opacity:.5; cursor:default; }
 
   /* Appearance: theme + chat wallpaper */
   .modal.wide{ width:min(420px, 92vw); max-height:86vh; overflow-y:auto; }
@@ -571,6 +572,82 @@
   .bubble{ max-width: min(66%, 480px); padding: 10px 14px; border-radius: 16px; font-size: 14.5px; line-height:1.42; word-wrap:break-word; }
   .row.them .bubble{ background: var(--panel-2); color: var(--ink); border-bottom-left-radius: 4px; }
   .row.me .bubble{ background: var(--teal); color: #eafff7; border-bottom-right-radius: 4px; }
+  .bubble{ position:relative; }
+  .row.has-react{ margin-bottom:20px; }
+  .react-chip{ position:absolute; bottom:-13px; right:10px; background: var(--panel); border:1px solid var(--line); border-radius:12px; padding:1px 7px; font-size:12px; line-height:1.5; color: var(--ink); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.25); white-space:nowrap; }
+  .row.them .react-chip{ right:auto; left:10px; }
+  .react-chip.mine{ border-color: var(--amber); }
+  .react-row{ display:flex; justify-content:space-between; gap:4px; margin-bottom:10px; background: var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:6px 8px; }
+  .react-pick{ background:none; border:none; font-size:24px; line-height:1; padding:4px 5px; border-radius:10px; cursor:pointer; }
+  .react-pick.on{ background: var(--amber-dim); }
+  .react-pick:active{ transform: scale(1.2); }
+  .reply-quote{ border-left:3px solid var(--amber); background: rgba(0,0,0,.14); border-radius:6px; padding:4px 8px; margin-bottom:6px; cursor:pointer; font-size:12.5px; overflow:hidden; }
+  :root[data-theme="light"] .row.them .reply-quote{ background: rgba(0,0,0,.06); }
+  .reply-quote b{ display:block; font-size:11.5px; color: var(--amber); margin-bottom:1px; }
+  .row.me .reply-quote b{ color:#fff3d6; }
+  .reply-quote span{ display:block; opacity:.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bubble.has-image .reply-quote{ margin:4px 4px 6px; }
+  .row.flash .bubble{ animation: flashbub 1.3s ease; }
+  @keyframes flashbub{ 0%,60%{ box-shadow:0 0 0 3px var(--amber); } 100%{ box-shadow:0 0 0 0 transparent; } }
+  .reply-bar{ display:flex; align-items:center; gap:10px; padding:8px 20px; border-top:1px solid var(--line); background: var(--bg); flex-shrink:0; }
+  .reply-bar .rb-body{ flex:1; min-width:0; border-left:3px solid var(--amber); padding-left:10px; }
+  .reply-bar b{ display:block; font-size:12px; color: var(--amber); }
+  .reply-bar span{ display:block; font-size:13px; color: var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .reply-bar button{ background:none; border:none; color: var(--ink-faint); font-size:22px; cursor:pointer; }
+  .ticks{ margin-left:3px; letter-spacing:-2px; }
+  .ticks.seen{ color: var(--teal-bright); }
+  .typing-txt{ color: var(--teal-bright); font-style:italic; }
+  .backup-msg{ font-size:12.5px; margin:-4px 0 12px; display:none; }
+  .backup-msg.show{ display:block; }
+  .backup-msg.ok{ color: var(--teal-bright); }
+  .backup-msg.bad{ color: var(--danger-text); }
+  .backup-note{ font-size:12.5px; color: var(--ink-dim); line-height:1.5; margin:0 0 12px; }
+  /* Status: strip, rings, my-status modal, composer, viewer */
+  .status-strip{ display:flex; gap:12px; overflow-x:auto; padding:2px 16px 12px; flex-shrink:0; scrollbar-width:none; }
+  .status-strip::-webkit-scrollbar{ display:none; }
+  .st-item{ display:flex; flex-direction:column; align-items:center; gap:5px; width:56px; flex-shrink:0; background:none; border:none; color: var(--ink); cursor:pointer; padding:0; font-family:inherit; }
+  .st-ava{ width:52px; height:52px; border-radius:50%; padding:3px; border:2px solid var(--line); display:flex; position:relative; }
+  .st-ava.new{ border-color: var(--amber); }
+  .st-ava.seen{ border-color: var(--ink-faint); }
+  .st-ava .avatar{ width:100%; height:100%; font-size:15px; }
+  .st-plus{ position:absolute; right:-4px; bottom:-4px; width:20px; height:20px; border-radius:50%; background: var(--amber); color:#221900; font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--panel); line-height:1; }
+  .st-name{ font-size:11px; color: var(--ink-dim); max-width:56px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .avatar.st-ring-new{ box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--amber); cursor:pointer; }
+  .avatar.st-ring-seen{ box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink-faint); cursor:pointer; }
+  .thread-item.active .avatar.st-ring-new{ box-shadow: 0 0 0 2px var(--panel-2), 0 0 0 4px var(--amber); }
+  .thread-item.active .avatar.st-ring-seen{ box-shadow: 0 0 0 2px var(--panel-2), 0 0 0 4px var(--ink-faint); }
+  .about-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .about-chip{ background: var(--panel-2); border:1px solid var(--line); color: var(--ink-dim); font-size:12.5px; padding:5px 10px; border-radius:999px; cursor:pointer; font-family:inherit; }
+  .about-chip.active{ background: var(--amber); border-color: var(--amber); color:#221900; font-weight:600; }
+  .modal-btn.outline{ background: var(--panel-2); border:1px solid var(--line); color: var(--ink); }
+  .st-btn-row{ display:flex; gap:8px; }
+  .st-btn-row .modal-btn{ flex:1; }
+  .my-st-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .my-st-row{ display:flex; align-items:center; gap:10px; background: var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px; cursor:pointer; }
+  .my-st-thumb{ width:42px; height:42px; border-radius:8px; flex-shrink:0; background-size:cover; background-position:center; }
+  .my-st-meta{ flex:1; min-width:0; font-size:13px; }
+  .my-st-meta span{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .my-st-meta small{ display:block; color: var(--ink-faint); font-size:11.5px; margin-top:2px; }
+  .my-st-del{ background:none; border:none; color: var(--danger); font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .st-preview{ height:220px; border-radius:14px; margin-bottom:10px; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; color:#fff; font-size:22px; font-weight:600; font-family:'Space Grotesk','Inter',sans-serif; overflow:hidden; word-break:break-word; line-height:1.3; }
+  .st-colors{ display:flex; gap:8px; margin-bottom:10px; }
+  .st-color{ width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; }
+  .st-color.active{ border-color: var(--ink); }
+  .st-viewer{ position:fixed; inset:0; background:#000; z-index:240; display:none; flex-direction:column; color:#fff; user-select:none; -webkit-user-select:none; }
+  .st-viewer.open{ display:flex; }
+  .st-bars{ display:flex; gap:4px; padding:12px 12px 6px; padding-top:max(12px, env(safe-area-inset-top)); position:relative; z-index:3; pointer-events:none; }
+  .st-bar{ flex:1; height:3px; border-radius:2px; background: rgba(255,255,255,.3); overflow:hidden; }
+  .st-bar i{ display:block; height:100%; width:0; background:#fff; }
+  .st-vhead{ display:flex; align-items:center; gap:10px; padding:6px 12px 10px; position:relative; z-index:3; pointer-events:none; }
+  .st-vhead .avatar{ width:38px; height:38px; font-size:13px; }
+  .st-vinfo{ flex:1; min-width:0; }
+  .st-vinfo b{ display:block; font-size:14px; font-family:'Space Grotesk','Inter',sans-serif; }
+  .st-vinfo span{ font-size:12px; opacity:.75; }
+  .st-vbtn{ pointer-events:auto; background: rgba(255,255,255,.16); border:none; color:#fff; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  #stvClose{ font-size:22px; padding:0 12px; line-height:1.5; }
+  .st-vbody{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:96px 20px; text-align:center; font-size:28px; font-weight:600; font-family:'Space Grotesk','Inter',sans-serif; word-break:break-word; line-height:1.3; }
+  .st-vbody img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; pointer-events:none; }
+  .st-vcap{ position:absolute; left:0; right:0; bottom:0; padding:28px 20px calc(18px + env(safe-area-inset-bottom)); text-align:center; font-size:15px; background: linear-gradient(transparent, rgba(0,0,0,.7)); z-index:2; display:none; pointer-events:none; word-break:break-word; }
   .msg-meta{ font-size:10.5px; color: var(--ink-faint); margin: 3px 4px 10px; }
 
   .composer{ display:flex; align-items:flex-end; gap:10px; padding: 14px 20px; border-top: 1px solid var(--line); flex-shrink:0; background: var(--bg); }
@@ -850,10 +927,13 @@
           <div class="account-menu-name" id="menuName"></div>
           <div class="account-menu-email" id="menuUsername"></div>
           <input type="file" id="avatarInput" accept="image/*" style="display:none;">
-          <button class="photo-btn" id="openAppearanceBtn">Theme &amp; wallpaper</button>
-          <button class="photo-btn" id="changeAvatarBtn">Change profile photo</button>
-          <button class="photo-btn remove" id="removeAvatarBtn" style="display:none;">Remove photo</button>
+          <button class="menu-btn" id="openBackupBtn">Chat backup</button>
+          <button class="menu-btn" id="openAppearanceBtn">Theme &amp; wallpaper</button>
+          <button class="menu-btn" id="changeAvatarBtn">Change profile photo</button>
+          <button class="menu-btn remove" id="removeAvatarBtn" style="display:none;">Remove photo</button>
+          <button class="menu-btn" id="refreshAppBtn">Refresh app (get latest)</button>
           <button class="signout-btn" id="signOutBtn">Sign out</button>
+          <div class="app-version" id="appVersion"></div>
         </div>
       </div>
     </div>
@@ -880,6 +960,7 @@
       <button class="filter-chip active" data-filter="all">All</button>
       <button class="filter-chip" data-filter="online">Active now</button>
     </div>
+    <div class="status-strip" id="statusStrip" aria-label="Status"></div>
     <div class="thread-list" id="threadList"></div>
   </aside>
 
@@ -959,6 +1040,10 @@
 
       <div class="messages" id="messages"></div>
 
+      <div class="reply-bar" id="replyBar" style="display:none;">
+        <div class="rb-body"><b id="replyBarName"></b><span id="replyBarText"></span></div>
+        <button id="cancelReplyBtn" title="Cancel reply" aria-label="Cancel reply">&times;</button>
+      </div>
       <div class="photo-preview-bar" id="photoPreviewBar" style="display:none;">
         <img id="photoPreviewImg" alt="">
         <span id="photoPreviewSize"></span>
@@ -976,6 +1061,84 @@
       </div>
     </div>
   </main>
+</div>
+
+<div id="myStatusOverlay" class="modal-overlay">
+  <div class="modal wide">
+    <h3>My status</h3>
+    <div class="ap-label">About</div>
+    <div class="about-chips" id="aboutChips"></div>
+    <input class="modal-input" id="aboutInput" type="text" maxlength="80" placeholder="Or write your own (max 80)">
+    <div class="modal-actions" style="margin:-4px 0 4px;">
+      <button class="modal-btn ghost" id="aboutClear">Clear</button>
+      <button class="modal-btn solid" id="aboutSave">Save</button>
+    </div>
+    <div class="ap-label">24-hour status</div>
+    <div class="st-btn-row">
+      <button class="modal-btn outline" id="newTextStatus">✏️ Text</button>
+      <button class="modal-btn outline" id="newPhotoStatus">📷 Photo</button>
+    </div>
+    <div class="my-st-list" id="myStList"></div>
+    <p class="backup-note" style="margin-top:12px;">Your contacts can see a status for 24 hours. Unlike chats, statuses are not end-to-end encrypted.</p>
+    <div class="modal-actions"><button class="modal-btn solid" id="myStClose">Done</button></div>
+  </div>
+</div>
+
+<div id="stComposeOverlay" class="modal-overlay" style="z-index:70;">
+  <div class="modal wide">
+    <h3 id="stComposeTitle">New status</h3>
+    <div class="st-preview" id="stPreview"></div>
+    <div class="st-colors" id="stColors"></div>
+    <textarea class="modal-input" id="stText" rows="3" maxlength="300"></textarea>
+    <input type="file" id="stPhotoInput" accept="image/*" style="display:none;">
+    <div class="backup-msg" id="stComposeMsg"></div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" id="stCancel">Cancel</button>
+      <button class="modal-btn solid" id="stPost">Post</button>
+    </div>
+  </div>
+</div>
+
+<div class="st-viewer" id="statusViewer">
+  <div class="st-vbody" id="stvBody"></div>
+  <div class="st-vcap" id="stvCap"></div>
+  <div class="st-bars" id="stBars"></div>
+  <div class="st-vhead">
+    <div class="avatar" id="stvAvatar"></div>
+    <div class="st-vinfo"><b id="stvName"></b><span id="stvTime"></span></div>
+    <button class="st-vbtn" id="stvDelete" style="display:none;">Delete</button>
+    <button class="st-vbtn" id="stvClose" aria-label="Close">&times;</button>
+  </div>
+</div>
+
+<div id="backupOverlay" class="modal-overlay">
+  <div class="modal wide">
+    <h3>Chat backup</h3>
+    <p class="backup-note">Your messages are already saved in your account, but they are encrypted and the key lives only on this device. This backup saves that key, locked with your passphrase, so you can read your chats again after a reinstall or on a new phone.</p>
+    <p class="modal-sub" id="backupStatus">Checking…</p>
+    <input class="modal-input" id="backupPass" type="password" placeholder="Passphrase (8+ characters)" autocomplete="new-password">
+    <input class="modal-input" id="backupPass2" type="password" placeholder="Repeat passphrase" autocomplete="new-password">
+    <div class="backup-msg" id="backupMsg"></div>
+    <p class="backup-note">If you forget the passphrase, nobody can recover the backup, not even us.</p>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="modal-btn ghost" id="backupDeleteBtn" style="display:none;">Delete backup</button>
+      <button class="modal-btn ghost" id="backupCloseBtn">Close</button>
+      <button class="modal-btn solid" id="backupSaveBtn">Save backup</button>
+    </div>
+  </div>
+</div>
+
+<div id="restoreOverlay" class="modal-overlay" style="z-index:250;">
+  <div class="modal">
+    <h3>Restore your chats</h3>
+    <p class="modal-sub">We found a backup on your account. Enter your backup passphrase to read your old messages on this device.</p>
+    <div class="auth-error" id="restoreError"></div>
+    <input class="modal-input" id="restorePass" type="password" placeholder="Backup passphrase" autocomplete="current-password">
+    <div class="modal-actions">
+      <button class="modal-btn ghost" id="restoreSkipBtn">Skip</button>
+      <button class="modal-btn solid" id="restoreGoBtn">Restore</button>
+    </div>
+  </div>
 </div>
 
 <div id="appearanceOverlay" class="modal-overlay">
@@ -1065,6 +1228,10 @@
   // ---- Firebase setup (login, database, real-time sync) ----
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
+  // Keep the login across restarts, and ask the browser not to evict this site's storage
+  // (the login token lives in the same storage as the chat keys).
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn('auth persistence not set', err && err.code));
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){}
   const db = firebase.firestore();
   const FieldValue = firebase.firestore.FieldValue;
 
@@ -1137,17 +1304,22 @@
             }).catch(() => {});
           });
       }
-      return crypto.subtle.generateKey(
-        { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
-      ).then(pair => {
-        myPrivateKey = pair.privateKey;
-        return Promise.all([
-          idbSet(storageKey, pair.privateKey),
-          crypto.subtle.exportKey('jwk', pair.publicKey)
-        ]);
-      }).then(([, jwk]) => {
-        myPublicJwk = pubOnly(jwk);
-        return db.collection('users').doc(myUid).set({ publicKeyJwk: jwk }, {merge:true});
+      // No key on this device. If the account has a key backup, offer to restore it
+      // instead of silently making a new key (a new key can't read old messages).
+      return tryRestoreFromBackup(storageKey).then(restored => {
+        if(restored) return;
+        return crypto.subtle.generateKey(
+          { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+        ).then(pair => {
+          myPrivateKey = pair.privateKey;
+          return Promise.all([
+            idbSet(storageKey, pair.privateKey),
+            crypto.subtle.exportKey('jwk', pair.publicKey)
+          ]);
+        }).then(([, jwk]) => {
+          myPublicJwk = pubOnly(jwk);
+          return db.collection('users').doc(myUid).set({ publicKeyJwk: jwk }, {merge:true});
+        });
       });
     });
   }
@@ -1459,6 +1631,552 @@
 
   signOutBtn.addEventListener('click', () => auth.signOut());
 
+  // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
+  const APP_VERSION = 'v31 · 15 Oct 2026';
+  document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
+  document.getElementById('refreshAppBtn').addEventListener('click', () => {
+    const btn = document.getElementById('refreshAppBtn');
+    btn.disabled = true; btn.textContent = 'Refreshing…';
+    Promise.resolve()
+      .then(() => ('serviceWorker' in navigator) ? navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))) : null)
+      .then(() => window.caches ? caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))) : null)
+      .catch(() => {})
+      .then(() => window.location.reload());
+  });
+
+  // ---- Status: a one-line "about" plus 24-hour text / photo statuses ----
+  const STATUS_TTL_MS = 24 * 60 * 60 * 1000;
+  const STATUS_VIEW_MS = 5000;
+  const STATUS_BGS = [
+    'linear-gradient(135deg,#e8a33d,#c97f1f)',
+    'linear-gradient(135deg,#3e7c6b,#1f4d40)',
+    'linear-gradient(135deg,#5a7fd6,#3a4fa0)',
+    'linear-gradient(135deg,#c9578a,#8a2f5c)',
+    'linear-gradient(135deg,#7d6fd1,#463a96)',
+    'linear-gradient(135deg,#2b2f3e,#12141b)'
+  ];
+  const ABOUT_PRESETS = ['Available', 'Busy', 'At work', 'In class', 'At the gym', 'Sleeping', "Can't talk, Thread only"];
+
+  const statusStrip = document.getElementById('statusStrip');
+  const myStatusOverlay = document.getElementById('myStatusOverlay');
+  const aboutChips = document.getElementById('aboutChips');
+  const aboutInput = document.getElementById('aboutInput');
+  const aboutSave = document.getElementById('aboutSave');
+  const aboutClear = document.getElementById('aboutClear');
+  const myStList = document.getElementById('myStList');
+  const stComposeOverlay = document.getElementById('stComposeOverlay');
+  const stComposeTitle = document.getElementById('stComposeTitle');
+  const stPreview = document.getElementById('stPreview');
+  const stColors = document.getElementById('stColors');
+  const stText = document.getElementById('stText');
+  const stPhotoInput = document.getElementById('stPhotoInput');
+  const stComposeMsg = document.getElementById('stComposeMsg');
+  const stPost = document.getElementById('stPost');
+  const statusViewerEl = document.getElementById('statusViewer');
+  const stBars = document.getElementById('stBars');
+  const stvAvatar = document.getElementById('stvAvatar');
+  const stvName = document.getElementById('stvName');
+  const stvTime = document.getElementById('stvTime');
+  const stvDelete = document.getElementById('stvDelete');
+  const stvBody = document.getElementById('stvBody');
+  const stvCap = document.getElementById('stvCap');
+
+  function statusCol(uid){ return db.collection('users').doc(uid).collection('statuses'); }
+  function isActiveStatus(s){ return !!s && s.exp > Date.now(); }
+  function parseStatus(doc, uid){
+    const d = doc.data() || {};
+    const type = d.type === 'photo' ? 'photo' : 'text';
+    const photo = typeof d.photo === 'string' ? d.photo : '';
+    if(type === 'photo' && !isValidImageDataUrl(photo)) return null;
+    return {
+      id: doc.id, uid: uid, type: type,
+      text: typeof d.text === 'string' ? d.text.slice(0, 300) : '',
+      bg: (Number.isInteger(d.bg) && d.bg >= 0 && d.bg < STATUS_BGS.length) ? d.bg : 0,
+      photo: type === 'photo' ? photo : '',
+      t: Number(d.t) || 0,
+      exp: Number(d.expiresAt) || 0
+    };
+  }
+  function statusQuery(uid){
+    return statusCol(uid).where('expiresAt', '>', Date.now()).orderBy('expiresAt');
+  }
+
+  function seenMap(){
+    if(!seenCache){
+      try{ seenCache = JSON.parse(localStorage.getItem('thread_status_seen_' + myUid) || '{}') || {}; }
+      catch(e){ seenCache = {}; }
+    }
+    return seenCache;
+  }
+  function markStatusSeen(uid, t){
+    const m = seenMap();
+    if((m[uid] || 0) >= t) return;
+    m[uid] = t;
+    try{ localStorage.setItem('thread_status_seen_' + myUid, JSON.stringify(m)); }catch(e){}
+  }
+  function activeStatusesOf(uid){
+    return (uid === myUid ? myStatuses : (statusesByUid[uid] || [])).filter(isActiveStatus);
+  }
+  // '' = nothing to see, 'new' = unwatched, 'seen' = already watched
+  function statusRing(uid){
+    const list = activeStatusesOf(uid);
+    if(list.length === 0) return '';
+    if(uid === myUid) return 'new';
+    return list[list.length - 1].t > (seenMap()[uid] || 0) ? 'new' : 'seen';
+  }
+
+  function watchStatuses(uid){
+    if(statusUnsubs[uid]) return;
+    statusUnsubs[uid] = statusQuery(uid).onSnapshot(snap => {
+      statusesByUid[uid] = snap.docs.map(d => parseStatus(d, uid)).filter(Boolean);
+      renderStatusUI();
+    }, err => console.warn('status listener error', err));
+  }
+  function startStatusFeature(){
+    seenCache = null;
+    if(myStatusUnsub){ myStatusUnsub(); myStatusUnsub = null; }
+    myStatusUnsub = statusQuery(myUid).onSnapshot(snap => {
+      myStatuses = snap.docs.map(d => parseStatus(d, myUid)).filter(Boolean);
+      renderStatusUI();
+    }, err => console.warn('my status listener error', err));
+    // tidy up my own expired statuses
+    statusCol(myUid).where('expiresAt', '<=', Date.now()).get().then(snap => {
+      if(snap.empty) return;
+      const b = db.batch();
+      snap.docs.forEach(d => b.delete(d.ref));
+      return b.commit();
+    }).catch(() => {});
+    if(statusSweep) clearInterval(statusSweep);
+    statusSweep = setInterval(renderStatusUI, 60000);
+    renderStatusStrip();
+  }
+  function renderStatusUI(){
+    renderStatusStrip();
+    renderList();
+    if(myStatusOverlay.classList.contains('open')) renderMyStatusList();
+  }
+
+  function makeStripItem(uid, name, photo, ring, isMine){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'st-item';
+    const wrap = document.createElement('div');
+    wrap.className = 'st-ava' + (ring ? ' ' + ring : '');
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    applyAvatar(av, uid, name, photo);
+    wrap.appendChild(av);
+    if(isMine){
+      const plus = document.createElement('span');
+      plus.className = 'st-plus';
+      plus.textContent = '+';
+      wrap.appendChild(plus);
+    }
+    const nm = document.createElement('span');
+    nm.className = 'st-name';
+    nm.textContent = isMine ? 'My status' : String(name || '').split(' ')[0];
+    b.appendChild(wrap);
+    b.appendChild(nm);
+    b.addEventListener('click', () => { if(isMine) openMyStatus(); else openStatusViewer(uid); });
+    return b;
+  }
+  function renderStatusStrip(){
+    if(!statusStrip || !myProfile || !myUid) return;
+    statusStrip.innerHTML = '';
+    statusStrip.appendChild(makeStripItem(myUid, myProfile.name, myProfile.photo, statusRing(myUid), true));
+    const rank = (u) => statusRing(u.id) === 'new' ? 0 : 1;
+    const newest = (u) => { const l = activeStatusesOf(u.id); return l.length ? l[l.length - 1].t : 0; };
+    Object.values(users)
+      .filter(u => u.id !== myUid && statusRing(u.id))
+      .sort((a, b) => rank(a) - rank(b) || newest(b) - newest(a))
+      .forEach(u => statusStrip.appendChild(makeStripItem(u.id, u.name, u.photo, statusRing(u.id), false)));
+  }
+
+  // ---- My status screen: the "about" line + my 24h statuses ----
+  function openMyStatus(){
+    aboutInput.value = (myProfile && myProfile.about) || '';
+    renderAboutChips();
+    renderMyStatusList();
+    myStatusOverlay.classList.add('open');
+  }
+  function renderAboutChips(){
+    aboutChips.innerHTML = '';
+    const cur = aboutInput.value.trim();
+    ABOUT_PRESETS.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'about-chip' + (cur === p ? ' active' : '');
+      b.textContent = p;
+      b.addEventListener('click', () => { aboutInput.value = p; renderAboutChips(); });
+      aboutChips.appendChild(b);
+    });
+  }
+  aboutInput.addEventListener('input', renderAboutChips);
+  function saveAbout(text){
+    aboutSave.disabled = true;
+    writeMyDoc({ about: text })
+      .then(() => {
+        myProfile.about = text;
+        aboutSave.textContent = 'Saved ✓';
+        setTimeout(() => { aboutSave.textContent = 'Save'; }, 1400);
+      })
+      .catch(err => { console.error('about save failed', err); alert("Couldn't save your status. Please try again."); })
+      .then(() => { aboutSave.disabled = false; });
+  }
+  aboutSave.addEventListener('click', () => saveAbout(aboutInput.value.trim().slice(0, 80)));
+  aboutClear.addEventListener('click', () => { aboutInput.value = ''; renderAboutChips(); saveAbout(''); });
+
+  function statusTimeLabel(t){
+    const sameDay = new Date(t).toDateString() === new Date().toDateString();
+    return (sameDay ? 'Today ' : 'Yesterday ') + fmtTime(t);
+  }
+  function renderMyStatusList(){
+    myStList.innerHTML = '';
+    const list = myStatuses.filter(isActiveStatus);
+    if(list.length === 0){
+      const p = document.createElement('p');
+      p.className = 'backup-note';
+      p.textContent = 'No active status. Post one above.';
+      myStList.appendChild(p);
+      return;
+    }
+    list.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'my-st-row';
+      const th = document.createElement('div');
+      th.className = 'my-st-thumb';
+      th.style.background = s.type === 'photo' ? ('#000 url("' + s.photo + '") center/cover') : STATUS_BGS[s.bg];
+      const meta = document.createElement('div');
+      meta.className = 'my-st-meta';
+      const l1 = document.createElement('span');
+      l1.textContent = s.text || (s.type === 'photo' ? 'Photo' : '');
+      const l2 = document.createElement('small');
+      const hrs = Math.max(1, Math.ceil((s.exp - Date.now()) / 3600000));
+      l2.textContent = statusTimeLabel(s.t) + ' · ' + hrs + 'h left';
+      meta.appendChild(l1); meta.appendChild(l2);
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'my-st-del';
+      del.textContent = 'Delete';
+      del.addEventListener('click', (e) => { e.stopPropagation(); deleteMyStatus(s.id); });
+      row.appendChild(th); row.appendChild(meta); row.appendChild(del);
+      row.addEventListener('click', () => openStatusViewer(myUid, i));
+      myStList.appendChild(row);
+    });
+  }
+  function deleteMyStatus(id){
+    if(!confirm('Delete this status?')) return Promise.resolve();
+    return statusCol(myUid).doc(id).delete().catch(err => { console.error('status delete failed', err); alert("Couldn't delete the status."); });
+  }
+  document.getElementById('myStClose').addEventListener('click', () => myStatusOverlay.classList.remove('open'));
+  myStatusOverlay.addEventListener('click', (e) => { if(e.target === myStatusOverlay) myStatusOverlay.classList.remove('open'); });
+
+  // ---- Posting a status (text on a colour, or a photo with a caption) ----
+  let stDraft = null; // { type, bg, photo }
+  function showStMsg(text){ stComposeMsg.textContent = text; stComposeMsg.className = 'backup-msg show bad'; }
+  function renderStPreview(){
+    if(!stDraft) return;
+    if(stDraft.type === 'photo'){
+      stPreview.textContent = '';
+      stPreview.style.background = '#000 url("' + stDraft.photo + '") center/contain no-repeat';
+    } else {
+      stPreview.style.background = STATUS_BGS[stDraft.bg];
+      stPreview.textContent = stText.value.trim() || 'Type your status';
+    }
+  }
+  function renderStColors(){
+    stColors.innerHTML = '';
+    STATUS_BGS.forEach((g, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'st-color' + (stDraft && stDraft.bg === i ? ' active' : '');
+      b.style.background = g;
+      b.setAttribute('aria-label', 'Colour ' + (i + 1));
+      b.addEventListener('click', () => { stDraft.bg = i; renderStColors(); renderStPreview(); });
+      stColors.appendChild(b);
+    });
+  }
+  function openCompose(type, photoDataUrl){
+    stDraft = { type: type, bg: 0, photo: photoDataUrl || null };
+    stText.value = '';
+    stText.placeholder = type === 'photo' ? 'Add a caption (optional)' : 'What do you want to say?';
+    stColors.style.display = type === 'text' ? 'flex' : 'none';
+    stComposeTitle.textContent = type === 'photo' ? 'Photo status' : 'Text status';
+    stComposeMsg.className = 'backup-msg';
+    renderStColors();
+    renderStPreview();
+    stComposeOverlay.classList.add('open');
+    if(type === 'text') setTimeout(() => stText.focus(), 80);
+  }
+  stText.addEventListener('input', renderStPreview);
+  document.getElementById('newTextStatus').addEventListener('click', () => openCompose('text'));
+  document.getElementById('newPhotoStatus').addEventListener('click', () => stPhotoInput.click());
+  stPhotoInput.addEventListener('change', () => {
+    const file = stPhotoInput.files && stPhotoInput.files[0];
+    stPhotoInput.value = '';
+    if(!file) return;
+    if(!/^image\//.test(file.type)){ alert('Please choose an image file.'); return; }
+    compressImage(file)
+      .then(dataUrl => openCompose('photo', dataUrl))
+      .catch(() => alert('Could not use that photo. Please try another one.'));
+  });
+  document.getElementById('stCancel').addEventListener('click', () => { stComposeOverlay.classList.remove('open'); stDraft = null; });
+  stPost.addEventListener('click', () => {
+    if(!stDraft || !myUid) return;
+    const text = stText.value.trim().slice(0, 300);
+    if(stDraft.type === 'text' && !text){ showStMsg('Write something first.'); return; }
+    if(stDraft.type === 'photo' && !isValidImageDataUrl(stDraft.photo)){ showStMsg('That photo is too large. Try another one.'); return; }
+    const now = Date.now();
+    const data = { type: stDraft.type, t: now, expiresAt: now + STATUS_TTL_MS, createdAt: FieldValue.serverTimestamp() };
+    if(stDraft.type === 'text'){ data.text = text; data.bg = stDraft.bg; }
+    else { data.photo = stDraft.photo; if(text) data.text = text; }
+    stPost.disabled = true;
+    statusCol(myUid).add(data)
+      .then(() => { stComposeOverlay.classList.remove('open'); stDraft = null; })
+      .catch(err => { console.error('status post failed', err); showStMsg("Couldn't post. Check your connection and try again."); })
+      .then(() => { stPost.disabled = false; });
+  });
+
+  // ---- Full-screen status viewer: tap right/left, hold to pause, auto-advances ----
+  let stv = null; // { uid, isMine, list, idx, elapsed, last, paused, downAt, raf, fills }
+  function openStatusViewer(uid, startIdx){
+    const isMine = uid === myUid;
+    const list = activeStatusesOf(uid);
+    if(list.length === 0) return;
+    let idx = 0;
+    if(typeof startIdx === 'number'){ idx = Math.min(startIdx, list.length - 1); }
+    else if(!isMine){
+      const seen = seenMap()[uid] || 0;
+      const first = list.findIndex(s => s.t > seen);
+      idx = first >= 0 ? first : 0;
+    }
+    stv = { uid: uid, isMine: isMine, list: list, idx: idx, elapsed: 0, last: 0, paused: false, downAt: 0, raf: 0, fills: [] };
+    stBars.innerHTML = '';
+    stv.fills = list.map(() => {
+      const bar = document.createElement('div');
+      bar.className = 'st-bar';
+      const fill = document.createElement('i');
+      bar.appendChild(fill);
+      stBars.appendChild(bar);
+      return fill;
+    });
+    const u = isMine ? myProfile : users[uid];
+    applyAvatar(stvAvatar, uid, (u && u.name) || '', u && u.photo);
+    stvName.textContent = isMine ? 'My status' : ((u && u.name) || '');
+    stvDelete.style.display = isMine ? '' : 'none';
+    statusViewerEl.classList.add('open');
+    showStatusAt(idx);
+    stv.raf = requestAnimationFrame(stvTick);
+  }
+  function showStatusAt(i){
+    if(!stv) return;
+    const s = stv.list[i];
+    stv.idx = i; stv.elapsed = 0; stv.last = 0;
+    stv.fills.forEach((f, k) => { f.style.width = k < i ? '100%' : '0%'; });
+    stvTime.textContent = statusTimeLabel(s.t);
+    stvBody.innerHTML = '';
+    if(s.type === 'photo'){
+      const img = document.createElement('img');
+      img.alt = 'Status photo';
+      img.src = s.photo;
+      stvBody.style.background = '#000';
+      stvBody.appendChild(img);
+      stvCap.textContent = s.text;
+      stvCap.style.display = s.text ? 'block' : 'none';
+    } else {
+      stvBody.style.background = STATUS_BGS[s.bg] || STATUS_BGS[0];
+      stvBody.textContent = s.text;
+      stvCap.style.display = 'none';
+    }
+    if(!stv.isMine) markStatusSeen(stv.uid, s.t);
+  }
+  function stvTick(ts){
+    if(!stv) return;
+    if(stv.last && !stv.paused) stv.elapsed += Math.min(100, ts - stv.last);
+    stv.last = ts;
+    const pct = Math.min(1, stv.elapsed / STATUS_VIEW_MS);
+    stv.fills[stv.idx].style.width = (pct * 100) + '%';
+    if(pct >= 1){ stvNext(); if(!stv) return; }
+    stv.raf = requestAnimationFrame(stvTick);
+  }
+  function stvNext(){
+    if(!stv) return;
+    if(stv.idx + 1 < stv.list.length) showStatusAt(stv.idx + 1);
+    else closeStatusViewer();
+  }
+  function stvPrev(){
+    if(!stv) return;
+    showStatusAt(stv.idx > 0 ? stv.idx - 1 : 0);
+  }
+  function forceCloseStatusViewer(){
+    if(stv){ cancelAnimationFrame(stv.raf); stv = null; }
+    if(statusViewerEl){ statusViewerEl.classList.remove('open'); }
+    if(stvBody) stvBody.innerHTML = '';
+  }
+  function closeStatusViewer(){
+    forceCloseStatusViewer();
+    renderStatusUI();   // rings turn grey for what was watched
+  }
+  stvBody.addEventListener('pointerdown', () => { if(stv){ stv.paused = true; stv.downAt = Date.now(); } });
+  stvBody.addEventListener('pointerup', (e) => {
+    if(!stv) return;
+    stv.paused = false;
+    if(Date.now() - stv.downAt < 250){
+      if(e.clientX < window.innerWidth * 0.33) stvPrev(); else stvNext();
+    }
+  });
+  stvBody.addEventListener('pointercancel', () => { if(stv) stv.paused = false; });
+  stvBody.addEventListener('pointerleave', () => { if(stv) stv.paused = false; });
+  stvBody.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.getElementById('stvClose').addEventListener('click', closeStatusViewer);
+  stvDelete.addEventListener('click', () => {
+    if(!stv || !stv.isMine) return;
+    const s = stv.list[stv.idx];
+    if(stv) stv.paused = true;
+    if(!confirm('Delete this status?')){ if(stv) stv.paused = false; return; }
+    statusCol(myUid).doc(s.id).delete().catch(err => console.error('status delete failed', err));
+    closeStatusViewer();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(!stv) return;
+    if(e.key === 'Escape') closeStatusViewer();
+    else if(e.key === 'ArrowRight') stvNext();
+    else if(e.key === 'ArrowLeft') stvPrev();
+  });
+
+  // ---- Chat backup: the private key, locked with a passphrase, saved in the account ----
+  const BACKUP_ITER = 250000;
+  function backupDocRef(){ return db.collection('users').doc(myUid).collection('private').doc('keyBackup'); }
+  function deriveBackupKey(pass, saltBuf, iter){
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey'])
+      .then(base => crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: saltBuf, iterations: iter, hash: 'SHA-256' },
+        base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']));
+  }
+  function createKeyBackup(pass){
+    if(!myPrivateKey) return Promise.reject(new Error('no key on this device'));
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    return Promise.all([crypto.subtle.exportKey('jwk', myPrivateKey), deriveBackupKey(pass, salt, BACKUP_ITER)])
+      .then(([jwk, key]) => crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(JSON.stringify(jwk)))
+        .then(ct => ({ jwk: jwk, ct: ct })))
+      .then(r => backupDocRef().set({
+        v: 1, iter: BACKUP_ITER, salt: bufToB64(salt), iv: bufToB64(iv), ct: bufToB64(r.ct),
+        x: r.jwk.x, updatedAt: FieldValue.serverTimestamp()
+      }));
+  }
+  function openKeyBackup(data, pass){
+    return deriveBackupKey(pass, b64ToBuf(data.salt), data.iter || BACKUP_ITER)
+      .then(key => crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBuf(data.iv) }, key, b64ToBuf(data.ct)))
+      .then(buf => JSON.parse(new TextDecoder().decode(buf)));
+  }
+
+  // Called from ensureMyKeyPair when this device has no key yet.
+  function tryRestoreFromBackup(storageKey){
+    return backupDocRef().get()
+      .then(doc => doc.exists ? askRestore(doc.data(), storageKey) : false)
+      .catch(err => { console.warn('backup check failed', err); return false; });
+  }
+  function askRestore(data, storageKey){
+    return new Promise(resolve => {
+      const ov = document.getElementById('restoreOverlay');
+      const input = document.getElementById('restorePass');
+      const err = document.getElementById('restoreError');
+      const goBtn = document.getElementById('restoreGoBtn');
+      const skipBtn = document.getElementById('restoreSkipBtn');
+      input.value = '';
+      err.classList.remove('show');
+      ov.classList.add('open');
+      setTimeout(() => input.focus(), 60);
+      const done = (ok) => {
+        ov.classList.remove('open');
+        goBtn.onclick = null; skipBtn.onclick = null; input.onkeydown = null;
+        resolve(ok);
+      };
+      const attempt = () => {
+        const pass = input.value;
+        if(!pass || goBtn.disabled) return;
+        goBtn.disabled = true; goBtn.textContent = 'Restoring…';
+        err.classList.remove('show');
+        openKeyBackup(data, pass).then(jwk =>
+          crypto.subtle.importKey('jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey'])
+            .then(key => idbSet(storageKey, key).then(() => key))
+            .then(key => {
+              myPrivateKey = key;
+              myPublicJwk = pubOnly(jwk);
+              // make sure contacts encrypt to the restored key
+              return db.collection('users').doc(myUid).set({ publicKeyJwk: myPublicJwk }, { merge: true });
+            })
+        ).then(() => done(true))
+         .catch(e => {
+           err.textContent = (e && e.name === 'OperationError') ? 'Wrong passphrase. Try again.' : "Couldn't restore the backup. Try again.";
+           err.classList.add('show');
+         })
+         .then(() => { goBtn.disabled = false; goBtn.textContent = 'Restore'; });
+      };
+      goBtn.onclick = attempt;
+      input.onkeydown = (e) => { if(e.key === 'Enter') attempt(); };
+      skipBtn.onclick = () => {
+        if(confirm('Without restoring, your old messages will stay unreadable on this device. Start fresh anyway?')) done(false);
+      };
+    });
+  }
+
+  // Backup screen in the account menu
+  const backupOverlay = document.getElementById('backupOverlay');
+  const backupStatus = document.getElementById('backupStatus');
+  const backupPass = document.getElementById('backupPass');
+  const backupPass2 = document.getElementById('backupPass2');
+  const backupMsg = document.getElementById('backupMsg');
+  const backupSaveBtn = document.getElementById('backupSaveBtn');
+  const backupDeleteBtn = document.getElementById('backupDeleteBtn');
+  function showBackupMsg(text, ok){
+    backupMsg.textContent = text;
+    backupMsg.className = 'backup-msg show ' + (ok ? 'ok' : 'bad');
+  }
+  function refreshBackupStatus(){
+    backupStatus.textContent = 'Checking…';
+    backupDocRef().get().then(doc => {
+      if(doc.exists){
+        const d = doc.data();
+        const when = d.updatedAt && d.updatedAt.toMillis ? new Date(d.updatedAt.toMillis()).toLocaleString() : '';
+        backupStatus.textContent = 'Backed up' + (when ? ' on ' + when : '') + '. Saving again replaces it.';
+        backupDeleteBtn.style.display = '';
+        backupSaveBtn.textContent = 'Update backup';
+      } else {
+        backupStatus.textContent = 'No backup yet.';
+        backupDeleteBtn.style.display = 'none';
+        backupSaveBtn.textContent = 'Save backup';
+      }
+    }).catch(() => { backupStatus.textContent = "Couldn't check the backup status."; });
+  }
+  document.getElementById('openBackupBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    accountMenu.classList.remove('open');
+    backupPass.value = ''; backupPass2.value = '';
+    backupMsg.className = 'backup-msg';
+    backupOverlay.classList.add('open');
+    refreshBackupStatus();
+  });
+  document.getElementById('backupCloseBtn').addEventListener('click', () => backupOverlay.classList.remove('open'));
+  backupOverlay.addEventListener('click', (e) => { if(e.target === backupOverlay) backupOverlay.classList.remove('open'); });
+  backupSaveBtn.addEventListener('click', () => {
+    const a = backupPass.value, b = backupPass2.value;
+    if(a.length < 8){ showBackupMsg('Use at least 8 characters.', false); return; }
+    if(a !== b){ showBackupMsg("The two passphrases don't match.", false); return; }
+    backupSaveBtn.disabled = true;
+    createKeyBackup(a)
+      .then(() => { backupPass.value = ''; backupPass2.value = ''; showBackupMsg('Backup saved to your account.', true); refreshBackupStatus(); })
+      .catch(err => { console.error('backup failed', err); showBackupMsg("Couldn't save the backup. Check your connection, then try again.", false); })
+      .then(() => { backupSaveBtn.disabled = false; });
+  });
+  backupDeleteBtn.addEventListener('click', () => {
+    if(!confirm('Delete your backup? You will not be able to restore your chats on a new device.')) return;
+    backupDocRef().delete()
+      .then(() => { showBackupMsg('Backup deleted.', true); refreshBackupStatus(); })
+      .catch(() => showBackupMsg("Couldn't delete the backup.", false));
+  });
+
   // ---- Appearance: dark / light theme and chat wallpaper (per device) ----
   const THEME_KEY = 'thread_theme';
   const WALLPAPER_KEY = 'thread_wallpaper';
@@ -1722,6 +2440,12 @@
   let lastMessages = {};     // uid -> {text, senderId, atMs}
   let unsubMessageStubs = {};
   let profileUnsubs = {};    // contactUid -> unsubscribe for their profile doc
+  let statusUnsubs = {};     // contactUid -> unsubscribe for their statuses
+  let statusesByUid = {};    // contactUid -> [active statuses, oldest first]
+  let myStatuses = [];       // my own active statuses
+  let myStatusUnsub = null;
+  let statusSweep = null;
+  let seenCache = null;      // { contactUid: time of the newest status I've watched }
   let currentChatUid = null;
   let currentChatUnsub = null;
   let filter = 'all';
@@ -1768,8 +2492,16 @@
   });
 
   // ---- After login: decide whether to show the app, or ask for a username ----
-  function routeAfterAuth(user){
+  let routeRetryTimer = null;
+  function showRouteRetry(){
+    authLoading.style.display = 'flex';
+    authLoading.innerHTML = '<div style="padding:30px;text-align:center;line-height:1.6;">Couldn\'t reach the server.<br>You are still signed in.<br><br><button class="auth-submit" id="routeRetryBtn" style="max-width:200px;">Try again</button></div>';
+    document.getElementById('routeRetryBtn').addEventListener('click', () => window.location.reload());
+  }
+  function routeAfterAuth(user, attempt){
+    attempt = attempt || 0;
     return db.collection('users').doc(user.uid).get().then(doc => {
+      authLoading.style.display = 'none';
       if(doc.exists && doc.data().username){
         authScreen.style.display = 'none';
         usernameScreen.style.display = 'none';
@@ -1784,8 +2516,22 @@
         usernameScreen.style.display = 'none';
         authScreen.style.display = 'flex';
       }
-    }).catch(err => console.error('profile check failed', err));
+    }).catch(err => {
+      console.error('profile check failed', err);
+      // A shaky connection must never look like "you were logged out": stay signed in and retry.
+      if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+      if(attempt < 6){
+        authLoading.style.display = 'flex';
+        clearTimeout(routeRetryTimer);
+        routeRetryTimer = setTimeout(() => routeAfterAuth(user, attempt + 1), 1500 * (attempt + 1));
+      } else {
+        showRouteRetry();
+      }
+    });
   }
+  window.addEventListener('online', () => {
+    if(auth.currentUser && !appStarted){ clearTimeout(routeRetryTimer); routeAfterAuth(auth.currentUser); }
+  });
 
   function validUsername(u){ return /^[a-z0-9_]{3,20}$/.test(u); }
   usernameSubmit.addEventListener('click', () => {
@@ -1834,6 +2580,12 @@
     Object.values(profileUnsubs).forEach(fn => fn());
     profileUnsubs = {};
     if(statusTicker) clearInterval(statusTicker);
+    Object.values(statusUnsubs).forEach(fn => fn());
+    statusUnsubs = {}; statusesByUid = {}; myStatuses = [];
+    if(myStatusUnsub){ myStatusUnsub(); myStatusUnsub = null; }
+    if(statusSweep){ clearInterval(statusSweep); statusSweep = null; }
+    seenCache = null;
+    forceCloseStatusViewer();
     users = {}; lastMessages = {}; incomingRequests = {}; myContactMeta = {}; currentChatUid = null;
     myPrivateKey = null;
     Object.keys(sharedKeyCache).forEach(k => delete sharedKeyCache[k]);
@@ -1846,7 +2598,7 @@
   function startApp(user, profileData){
     if(appStarted) return;
     appStarted = true;
-    myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '', photo: (profileData && profileData.photo) || '' };
+    myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '', photo: (profileData && profileData.photo) || '', about: (profileData && profileData.about) || '' };
     renderMyAvatar(user.uid);
     menuName.textContent = myProfile.name;
     menuUsername.textContent = '@' + myProfile.username;
@@ -1865,7 +2617,10 @@
           delete myContactMeta[contactUid];
           if(profileUnsubs[contactUid]){ profileUnsubs[contactUid](); delete profileUnsubs[contactUid]; }
           if(unsubMessageStubs[contactUid]){ unsubMessageStubs[contactUid](); delete unsubMessageStubs[contactUid]; }
+          if(statusUnsubs[contactUid]){ statusUnsubs[contactUid](); delete statusUnsubs[contactUid]; }
+          delete statusesByUid[contactUid];
           renderList();
+          renderStatusStrip();
           return;
         }
         const cd = change.doc.data();
@@ -1878,7 +2633,18 @@
               const newKeyX = d.publicKeyJwk ? d.publicKeyJwk.x : null;
               const oldKeyX = users[contactUid] ? users[contactUid].keyX : undefined;
               if(oldKeyX !== newKeyX){ delete sharedKeyCache[contactUid]; delete contactPubJwkCache[contactUid]; }
+              const prevU = users[contactUid];
+              const typingAtVal = d.typingAt || 0;
+              let typingUntil = 0;
+              if(d.typingTo === myUid){
+                // Expire on OUR clock from when we first saw this ping, so clock differences between phones don't matter.
+                typingUntil = !prevU ? 0 : (prevU.typingAt === typingAtVal ? (prevU.typingUntil || 0) : Date.now() + 5000);
+              }
               users[contactUid] = {
+                about: typeof d.about === 'string' ? d.about : '',
+                typingAt: typingAtVal,
+                typingUntil: typingUntil,
+                readMap: d.readMap || {},
                 keyX: newKeyX,
                 id: contactUid,
                 name: d.name || d.username || 'Someone',
@@ -1888,9 +2654,15 @@
               };
             }
             renderList();
+            if(currentChatUid === contactUid){ renderHeadStatus(); refreshTicks(); }
+            const tu = users[contactUid] && users[contactUid].typingUntil;
+            if(tu && tu > Date.now()){
+              setTimeout(() => { renderList(); if(currentChatUid === contactUid) renderHeadStatus(); }, tu - Date.now() + 80);
+            }
           }, err => console.error('contact profile error', err));
           watchPreview(contactUid);
         }
+        watchStatuses(contactUid);
       });
       renderList();
     }, err => console.error('contacts snapshot error', err));
@@ -1909,6 +2681,7 @@
     }, err => console.error('requests snapshot error', err));
 
     listenForIncomingCalls();
+    startStatusFeature();
 
     }); // end ensureMyKeyPair().then()
   }
@@ -2050,7 +2823,7 @@
       const item = document.createElement('div');
       item.className = 'thread-item' + (u.id === currentChatUid ? ' active' : '');
       item.innerHTML = `
-        <div class="avatar" style="${avatarStyle(u.id, u.photo)}">
+        <div class="avatar${statusRing(u.id) ? ' st-ring-' + statusRing(u.id) : ''}" style="${avatarStyle(u.id, u.photo)}">
           ${avatarLabel(u.name, u.photo)}
           <span class="dot ${statusOf(u.id)}"></span>
         </div>
@@ -2059,17 +2832,22 @@
             <span class="contact-name">${escapeHtml(u.name)}</span>
             <span class="thread-time">${last ? fmtListTime(last.atMs) : ''}</span>
           </div>
-          <div class="thread-preview">${last ? (last.senderId===myUid ? 'You: ' : '') + escapeHtml(last.text) : 'Say hello'}</div>
+          <div class="thread-preview">${isTyping(u.id) ? '<span class="typing-txt">typing…</span>' : (last ? (last.senderId===myUid ? 'You: ' : '') + escapeHtml(last.text) : 'Say hello')}</div>
         </div>
         ${unread ? '<div class="unread-dot"></div>' : ''}
       `;
       item.addEventListener('click', () => openChat(u.id));
+      if(statusRing(u.id)){
+        item.querySelector('.avatar').addEventListener('click', (e) => { e.stopPropagation(); openStatusViewer(u.id); });
+      }
       threadListEl.appendChild(item);
     });
   }
 
   // ---- Opening a conversation and loading/decrypting its messages ----
   function openChat(uid){
+    clearTyping();
+    clearReply();
     currentChatUid = uid;
     setLastRead(uid);
     const u = users[uid];
@@ -2102,6 +2880,8 @@
             encImage: d.encImage || null,
             encKeys: d.encKeys || null,
             callLog: d.callLog || null,
+            reactions: d.reactions || {},
+            replyToId: d.replyToId || null,
             deleted: !!d.deleted,
             hiddenFor: d.hiddenFor || [],
             t: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : Date.now()
@@ -2119,8 +2899,10 @@
           });
         })).then(msgs => {
           if(myToken !== renderToken) return; // a newer snapshot has since arrived
+          lastRenderedMsgs = msgs;
           renderMessages(msgs);
           setLastRead(uid);
+          markRead(uid, msgs);
           renderList();
         });
       }, err => console.error('messages snapshot error', err));
@@ -2131,13 +2913,21 @@
   function renderHeadStatus(){
     if(!currentChatUid) return;
     const s = statusOf(currentChatUid);
-    headStatus.textContent = statusLabel(s);
+    if(isTyping(currentChatUid)){
+      headStatus.textContent = 'typing…';
+      headStatus.className = 'chat-head-status online';
+      return;
+    }
+    const aboutTxt = users[currentChatUid] && users[currentChatUid].about;
+    headStatus.textContent = statusLabel(s) + (aboutTxt ? ' · ' + aboutTxt : '');
     headStatus.className = 'chat-head-status' + (s === 'online' ? ' online' : '');
   }
 
   // ---- Drawing message bubbles on screen ----
   function renderMessages(msgs){
     messagesEl.innerHTML = '';
+    const byId = {};
+    msgs.forEach(x => { byId[x.id] = x; });
     let lastDay = null;
     msgs.forEach((m, i) => {
       const day = new Date(m.t).toDateString();
@@ -2188,6 +2978,12 @@
         row.innerHTML = `<div class="bubble">${escapeHtml(m.text)}</div>`;
         attachLongPress(row.querySelector('.bubble'), m);
       }
+      row.dataset.mid = m.id;
+      if(!m.deleted){
+        const bub = row.querySelector('.bubble');
+        if(bub && m.replyToId) bub.insertBefore(buildReplyQuote(m.replyToId, byId), bub.firstChild);
+        if(bub) renderReactions(row, bub, m);
+      }
       messagesEl.appendChild(row);
 
       const isLastInGroup = (i === msgs.length-1) || msgs[i+1].who !== m.who;
@@ -2196,9 +2992,16 @@
         meta.className = 'msg-meta ' + (m.who === 'me' ? 'me' : 'them');
         meta.style.textAlign = m.who === 'me' ? 'right' : 'left';
         meta.textContent = fmtTime(m.t);
+        if(m.who === 'me'){
+          meta.dataset.t = String(m.t);
+          const tk = document.createElement('span');
+          tk.className = 'ticks';
+          meta.appendChild(tk);
+        }
         messagesEl.appendChild(meta);
       }
     });
+    refreshTicks();
     if(msgs.length === 0){
       messagesEl.innerHTML = '<div class="empty-list">No messages yet — say hi.</div>';
     }
@@ -2214,7 +3017,10 @@
     const chatId = chatIdFor(myUid, currentChatUid);
     const contactUid = currentChatUid;
     const photo = pendingPhoto;
+    const replyId = replyingTo ? replyingTo.id : null;
     composerInput.value = '';
+    clearReply();
+    clearTyping();
     clearPendingPhoto();
     autoGrow();
     updateSendState();
@@ -2236,14 +3042,17 @@
       if(myPublicJwk && contactPubJwkCache[contactUid]){
         payload.encKeys = { s: myPublicJwk, r: contactPubJwkCache[contactUid] };
       }
+      if(replyId) payload.replyToId = replyId;
       const col = db.collection('chats').doc(chatId).collection('messages');
-      return col.add(payload).catch(err => {
-        if(payload.encKeys && err && err.code === 'permission-denied'){
-          delete payload.encKeys;   // server rules don't allow the extra field; send without it
-          return col.add(payload);
+      const tryAdd = () => col.add(payload).catch(err => {
+        if(err && err.code === 'permission-denied'){
+          // server rules may not allow the extra fields; drop them one at a time and still deliver the message
+          if(payload.replyToId){ delete payload.replyToId; return tryAdd(); }
+          if(payload.encKeys){ delete payload.encKeys; return tryAdd(); }
         }
         throw err;
       });
+      return tryAdd();
     }).catch(err => console.error('send failed', err));
   }
 
@@ -2258,6 +3067,134 @@
     if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
   });
   sendBtn.addEventListener('click', sendMessage);
+
+  // ---- Typing indicator, read receipts, reactions, replies ----
+  let lastRenderedMsgs = [];
+  let replyingTo = null;      // { id, who, snippet }
+  let typingSentAt = 0;
+  const lastReadWritten = {}; // contactUid -> newest incoming message time we already reported as read
+  const replyBar = document.getElementById('replyBar');
+  const replyBarName = document.getElementById('replyBarName');
+  const replyBarText = document.getElementById('replyBarText');
+
+  function isTyping(uid){
+    const u = users[uid];
+    return !!(u && u.typingUntil && u.typingUntil > Date.now());
+  }
+  function writeMyDoc(data){
+    return db.collection('users').doc(myUid).set(data, { merge: true });
+  }
+  function clearTyping(){
+    if(!typingSentAt || !myUid) return;
+    typingSentAt = 0;
+    writeMyDoc({ typingTo: null, typingAt: Date.now() }).catch(() => {});
+  }
+  composerInput.addEventListener('input', () => {
+    if(!currentChatUid) return;
+    if(composerInput.value.trim().length === 0){ clearTyping(); return; }
+    const now = Date.now();
+    if(now - typingSentAt > 2500){
+      typingSentAt = now;
+      writeMyDoc({ typingTo: currentChatUid, typingAt: now }).catch(() => {});
+    }
+  });
+  composerInput.addEventListener('blur', clearTyping);
+
+  // Read receipts: tell the sender the time of the newest message of theirs we've actually seen.
+  function markRead(uid, msgs){
+    if(document.visibilityState !== 'visible' || currentChatUid !== uid) return;
+    let newest = 0;
+    msgs.forEach(m => { if(m.who === 'them' && !m.callLog && m.t > newest) newest = m.t; });
+    if(!newest || newest <= (lastReadWritten[uid] || 0)) return;
+    const prev = lastReadWritten[uid] || 0;
+    lastReadWritten[uid] = newest;
+    writeMyDoc({ readMap: { [uid]: newest } }).catch(() => { lastReadWritten[uid] = prev; });
+  }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible'){
+      if(currentChatUid) markRead(currentChatUid, lastRenderedMsgs);
+    } else {
+      clearTyping();
+    }
+  });
+  function isSeen(t){
+    const u = users[currentChatUid];
+    return !!(u && u.readMap && u.readMap[myUid] >= t);
+  }
+  function refreshTicks(){
+    messagesEl.querySelectorAll('.msg-meta[data-t]').forEach(el => {
+      const seen = isSeen(Number(el.dataset.t));
+      const tk = el.querySelector('.ticks');
+      if(!tk) return;
+      tk.textContent = seen ? '✓✓' : '✓';
+      tk.className = 'ticks' + (seen ? ' seen' : '');
+      tk.title = seen ? 'Seen' : 'Sent';
+    });
+  }
+
+  // Reactions live on the message doc as reactions.<uid> = emoji
+  function setReaction(msgId, emoji){
+    if(!currentChatUid) return;
+    const ref = db.collection('chats').doc(chatIdFor(myUid, currentChatUid)).collection('messages').doc(msgId);
+    ref.update({ ['reactions.' + myUid]: emoji === null ? FieldValue.delete() : emoji })
+      .catch(err => console.error('reaction failed', err));
+  }
+  function renderReactions(row, bub, m){
+    const emojis = Object.keys(m.reactions || {}).map(k => m.reactions[k]).filter(Boolean);
+    if(emojis.length === 0) return;
+    const uniq = [...new Set(emojis)];
+    const chip = document.createElement('span');
+    chip.className = 'react-chip' + (m.reactions[myUid] ? ' mine' : '');
+    chip.textContent = uniq.join('') + (emojis.length > 1 ? ' ' + emojis.length : '');
+    chip.addEventListener('pointerdown', (e) => e.stopPropagation());
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(m.reactions[myUid]) setReaction(m.id, null); else openMsgActions(m);
+    });
+    bub.appendChild(chip);
+    row.classList.add('has-react');
+  }
+
+  // Replies store only the id of the original; the quote is built from the already-decrypted list.
+  function snippetOf(m){
+    if(!m) return 'Original message';
+    if(m.deleted) return 'Message deleted';
+    const t = (m.text || '').replace(/\s+/g, ' ').trim();
+    if(m.image) return '📷 ' + (t || 'Photo');
+    return t.length > 90 ? t.slice(0, 90) + '…' : t;
+  }
+  function buildReplyQuote(rid, byId){
+    const orig = byId[rid];
+    const q = document.createElement('div');
+    q.className = 'reply-quote';
+    const who = document.createElement('b');
+    who.textContent = !orig ? 'Reply' : (orig.who === 'me' ? 'You' : ((users[currentChatUid] && users[currentChatUid].name) || 'Them'));
+    const sn = document.createElement('span');
+    sn.textContent = snippetOf(orig);
+    q.appendChild(who); q.appendChild(sn);
+    q.addEventListener('pointerdown', (e) => e.stopPropagation());
+    q.addEventListener('click', (e) => { e.stopPropagation(); scrollToMessage(rid); });
+    return q;
+  }
+  function scrollToMessage(id){
+    const target = messagesEl.querySelector('[data-mid="' + id + '"]');
+    if(!target) return;
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.classList.add('flash');
+    setTimeout(() => target.classList.remove('flash'), 1400);
+  }
+  function setReply(msg){
+    replyingTo = { id: msg.id, who: msg.who, snippet: snippetOf(msg) };
+    replyBarName.textContent = 'Replying to ' + (msg.who === 'me' ? 'yourself' : ((users[currentChatUid] && users[currentChatUid].name) || ''));
+    replyBarText.textContent = replyingTo.snippet;
+    replyBar.style.display = 'flex';
+    composerInput.focus();
+  }
+  function clearReply(){
+    replyingTo = null;
+    replyBar.style.display = 'none';
+  }
+  document.getElementById('cancelReplyBtn').addEventListener('click', clearReply);
 
   // ---- Attaching and compressing a photo before sending ----
   function clearPendingPhoto(){
@@ -2386,6 +3323,23 @@
 
   function openMsgActions(msg){
     msgActionsList.innerHTML = '';
+    const mineReaction = (msg.reactions && msg.reactions[myUid]) || null;
+    const rr = document.createElement('div');
+    rr.className = 'react-row';
+    ['👍','❤️','😂','😮','😢','🙏'].forEach(em => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'react-pick' + (mineReaction === em ? ' on' : '');
+      b.textContent = em;
+      b.addEventListener('click', () => { setReaction(msg.id, mineReaction === em ? null : em); closeMsgActions(); });
+      rr.appendChild(b);
+    });
+    msgActionsList.appendChild(rr);
+    const replyBtn = document.createElement('button');
+    replyBtn.className = 'msg-action-item';
+    replyBtn.textContent = 'Reply';
+    replyBtn.addEventListener('click', () => { setReply(msg); closeMsgActions(); });
+    msgActionsList.appendChild(replyBtn);
     const deleteForMeBtn = document.createElement('button');
     deleteForMeBtn.className = 'msg-action-item danger';
     deleteForMeBtn.textContent = 'Delete for me';
@@ -3110,17 +4064,27 @@
         const banner = document.getElementById('updateBanner');
         const btn = document.getElementById('updateBannerBtn');
 
+        function applyUpdate(worker){
+          try { worker.postMessage('SKIP_WAITING'); } catch(e){ /* ignore */ }
+          // the controllerchange handler below reloads once the new worker is in charge;
+          // this is only a fallback in case that event never arrives
+          setTimeout(() => window.location.reload(), 3000);
+        }
         function showBannerFor(worker){
           banner.classList.add('show');
           btn.onclick = () => {
             btn.disabled = true;
             btn.textContent = 'Updating…';
-            try { worker.postMessage('SKIP_WAITING'); } catch(e){ /* ignore */ }
-            window.location.reload();
+            applyUpdate(worker);
           };
         }
 
-        if(reg.waiting){ showBannerFor(reg.waiting); }
+        if(reg.waiting){
+          // an update was downloaded earlier: switch to it right away on a fresh open (once per session)
+          let auto = false;
+          try{ auto = !sessionStorage.getItem('thread_sw_auto'); if(auto) sessionStorage.setItem('thread_sw_auto', '1'); }catch(e){}
+          if(auto) applyUpdate(reg.waiting); else showBannerFor(reg.waiting);
+        }
 
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
