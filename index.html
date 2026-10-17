@@ -451,6 +451,10 @@
     background:none; border:1px solid var(--line); color: var(--amber);
     font-size:13px; font-weight:600; cursor:pointer;
   }
+  .account-menu-email.copyable{ cursor:pointer; color: var(--amber); }
+  .account-menu-email.copyable::after{ content:' · tap to copy'; color: var(--ink-faint); font-size:11px; }
+  .head-username{ font-weight:400; font-size:12.5px; color: var(--ink-faint); margin-left:6px; }
+  .my-username-chip{ display:inline-block; background: var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:13px; color: var(--amber); font-weight:600; cursor:pointer; margin:-6px 0 14px; }
   .toast{ position:fixed; left:50%; bottom:28px; transform:translate(-50%,12px); opacity:0; pointer-events:none; background: var(--panel-2); border:1px solid var(--line); color: var(--ink); padding:10px 16px; border-radius:12px; font-size:13.5px; z-index:260; transition: opacity .2s, transform .2s; max-width:88vw; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,.35); }
   .toast.show{ opacity:1; transform:translate(-50%,0); }
   .app-version{ font-size:11px; color: var(--ink-faint); text-align:center; margin-top:10px; }
@@ -971,6 +975,7 @@
       <div class="modal">
         <h3>Add by username</h3>
         <p class="modal-sub">This sends a request — they'll need to accept it before you can message each other.</p>
+        <div class="my-username-chip" id="myUsernameChip" title="Tap to copy"></div>
         <div class="auth-error" id="addContactError"></div>
         <input class="modal-input" id="addContactInput" type="text" placeholder="e.g. shivam007" autocapitalize="none">
         <div class="modal-actions">
@@ -1016,7 +1021,7 @@
         <div class="chat-head-info">
           <div class="chat-head-name" id="headName">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px; margin-right:4px; opacity:.6;"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            <span id="headNameText"></span>
+            <span id="headNameText"></span><span class="head-username" id="headUsername"></span>
           </div>
           <div class="chat-head-status" id="headStatus"></div>
         </div>
@@ -1492,6 +1497,7 @@
   const headAvatar = document.getElementById('headAvatar');
   const headName = document.getElementById('headName');
   const headNameText = document.getElementById('headNameText');
+  const headUsername = document.getElementById('headUsername');
   const headStatus = document.getElementById('headStatus');
   const chatOptionsBtn = document.getElementById('chatOptionsBtn');
   const chatOptionsMenu = document.getElementById('chatOptionsMenu');
@@ -1634,7 +1640,7 @@
   signOutBtn.addEventListener('click', () => auth.signOut());
 
   // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
-  const APP_VERSION = 'v32 · 17 Oct 2026';
+  const APP_VERSION = 'v33 · 17 Oct 2026';
   document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
   document.getElementById('refreshAppBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshAppBtn');
@@ -2615,7 +2621,8 @@
     myProfile = { name: (profileData && profileData.name) || user.displayName || user.email, username: (profileData && profileData.username) || '', photo: (profileData && profileData.photo) || '', about: (profileData && profileData.about) || '' };
     renderMyAvatar(user.uid);
     menuName.textContent = myProfile.name;
-    menuUsername.textContent = '@' + myProfile.username;
+    menuUsername.textContent = myProfile.username ? '@' + myProfile.username : '';
+    menuUsername.classList.toggle('copyable', !!myProfile.username);
 
     ensureMyKeyPair().catch(err => console.error('key setup failed', err)).then(() => {
 
@@ -2927,6 +2934,8 @@
   function renderHeadStatus(){
     if(!currentChatUid) return;
     const s = statusOf(currentChatUid);
+    const uname = users[currentChatUid] && users[currentChatUid].username;
+    headUsername.textContent = uname ? '@' + uname : '';
     if(isTyping(currentChatUid)){
       headStatus.textContent = 'typing…';
       headStatus.className = 'chat-head-status online';
@@ -3413,6 +3422,9 @@
 
   // ---- Adding someone by username (sends a request) ----
   function openAddContact(){
+    const mine = myProfile && myProfile.username;
+    myUsernameChip.style.display = mine ? 'inline-block' : 'none';
+    myUsernameChip.textContent = mine ? 'Your username: @' + mine + ' · tap to copy' : '';
     addContactInput.value = '';
     addContactError.classList.remove('show');
     confirmAddContact.disabled = false;
@@ -3425,6 +3437,25 @@
   cancelAddContact.addEventListener('click', closeAddContact);
   addContactOverlay.addEventListener('click', (e) => { if(e.target === addContactOverlay) closeAddContact(); });
   addContactInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAddContact.click(); });
+
+  function fallbackCopy(text, done){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ if(document.execCommand('copy')) done(); }catch(e){}
+    ta.remove();
+  }
+  function copyText(text){
+    const done = () => showToast('Copied ' + text);
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  menuUsername.addEventListener('click', () => { if(myProfile && myProfile.username) copyText('@' + myProfile.username); });
+  const myUsernameChip = document.getElementById('myUsernameChip');
+  myUsernameChip.addEventListener('click', () => { if(myProfile && myProfile.username) copyText(myProfile.username); });
 
   // Readable messages for the errors people actually hit
   function friendlyErr(err){
