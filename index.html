@@ -1640,7 +1640,7 @@
   signOutBtn.addEventListener('click', () => auth.signOut());
 
   // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
-  const APP_VERSION = 'v34 · 17 Oct 2026';
+  const APP_VERSION = 'v35 · 17 Oct 2026';
   document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
   document.getElementById('refreshAppBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshAppBtn');
@@ -3489,30 +3489,46 @@
     });
   }
 
+  function withTimeout(promise, ms){
+    return new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject({ code: 'timeout' }), ms);
+      promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+    });
+  }
   confirmAddContact.addEventListener('click', () => {
+    if(confirmAddContact.disabled) return;
     const uname = addContactInput.value.trim().toLowerCase().replace(/^@+/, '').replace(/\s+/g, '');
-    const fail = (msg) => { addContactError.textContent = msg; addContactError.classList.add('show'); confirmAddContact.disabled = false; };
+    const idle = () => { confirmAddContact.disabled = false; confirmAddContact.textContent = 'Send request'; };
+    const fail = (msg) => { addContactError.textContent = msg; addContactError.classList.add('show'); idle(); };
     addContactError.classList.remove('show');
     if(!uname){ fail('Enter a username.'); return; }
     if(uname.indexOf('/') !== -1){ fail('Usernames only use letters, numbers and underscores.'); return; }
-    confirmAddContact.disabled = true;
-    lookupUidByUsername(uname).then(theirUid => {
+    if(!myProfile || !myProfile.username){ fail('Your profile is still loading. Wait a few seconds and try again.'); return; }
+    confirmAddContact.disabled = true; confirmAddContact.textContent = 'Sending…';
+    const work = lookupUidByUsername(uname).then(theirUid => {
       if(!theirUid){ fail('No one has the username "' + uname + '". Check the spelling.'); return; }
       if(theirUid === myUid){ fail("That's your own username."); return; }
       if(users[theirUid]){ fail('@' + uname + ' is already in your contacts.'); return; }
+      if(incomingRequests[theirUid]){
+        // they already asked me: adding them back simply accepts
+        acceptRequest(theirUid); idle(); closeAddContact(); showToast('@' + uname + ' added'); return;
+      }
       const reqData = {
         fromUid: myUid,
-        fromName: myProfile.name,
+        fromName: myProfile.name || myProfile.username,
         fromUsername: myProfile.username,
         sentAt: FieldValue.serverTimestamp()
       };
       if(myProfile.photo) reqData.fromPhoto = myProfile.photo;
       return db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set(reqData).then(() => {
-        confirmAddContact.disabled = false;
-        closeAddContact();
-        showToast('Request sent to @' + uname);
+        idle(); closeAddContact();
+        showToast('Request sent to @' + uname + '. They must open the bell and tap Accept.');
       });
-    }).catch(err => { console.error('add contact failed', err); fail(friendlyErr(err)); });
+    });
+    withTimeout(work, 15000).catch(err => {
+      console.error('add contact failed', err);
+      fail(err && err.code === 'timeout' ? 'No reply from the server. Check your internet, then try again.' : friendlyErr(err));
+    });
   });
 
   // ---- Accepting/declining incoming contact requests ----
@@ -3552,7 +3568,7 @@
     batch.set(myContactRef, { addedAt: FieldValue.serverTimestamp() });
     batch.set(theirContactRef, { addedAt: FieldValue.serverTimestamp() });
     batch.delete(reqRef);
-    batch.commit().catch(err => console.error('accept request failed', err));
+    batch.commit().catch(err => { console.error('accept request failed', err); showToast(friendlyErr(err)); });
   }
 
   function declineRequest(fromUid){
