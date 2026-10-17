@@ -1,4 +1,4 @@
-const CACHE_NAME = 'thread-cache-v35';
+const CACHE_NAME = 'thread-cache-v38';
 const PRECACHE_URLS = [
   './index.html',
   './manifest.json',
@@ -44,17 +44,22 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   if (req.mode === 'navigate') {
+    // Fresh copy when the network answers quickly; otherwise open the saved copy at once
+    // (the fresh one is still downloaded in the background for next time).
+    const network = fetch(req, { cache: 'no-cache' }).then((res) => {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put('./index.html', copy)).catch(() => {});
+      }
+      return res;
+    });
+    const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 2500))
+      .then(() => caches.match('./index.html'))
+      .then((cached) => cached || network);
     event.respondWith(
-      fetch(req, { cache: 'no-cache' })
-        .then((res) => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((c) => c.put('./index.html', copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => caches.match('./index.html'))
+      Promise.race([network.catch(() => null), timeout]).then((res) => res || caches.match('./index.html') || network)
     );
+    event.waitUntil(network.catch(() => {}));
     return;
   }
 

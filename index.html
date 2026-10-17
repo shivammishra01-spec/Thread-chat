@@ -916,7 +916,7 @@
     <div class="auth-error" id="usernameError"></div>
     <div class="auth-field">
       <label>Username</label>
-      <input type="text" id="usernameInput" placeholder="e.g. shivam007" autocapitalize="none">
+      <input type="text" id="usernameInput" placeholder="e.g. shivam007" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <p class="username-hint" id="usernameHint">Letters, numbers and underscores, at least 3 characters.</p>
     <button class="auth-submit" id="usernameSubmit">Continue</button>
@@ -933,6 +933,7 @@
           <div class="account-menu-name" id="menuName"></div>
           <div class="account-menu-email" id="menuUsername"></div>
           <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+          <button class="menu-btn" id="changeUsernameBtn">Change username</button>
           <button class="menu-btn" id="openBackupBtn">Chat backup</button>
           <button class="menu-btn" id="openAppearanceBtn">Theme &amp; wallpaper</button>
           <button class="menu-btn" id="changeAvatarBtn">Change profile photo</button>
@@ -977,10 +978,22 @@
         <p class="modal-sub">This sends a request — they'll need to accept it before you can message each other.</p>
         <div class="my-username-chip" id="myUsernameChip" title="Tap to copy"></div>
         <div class="auth-error" id="addContactError"></div>
-        <input class="modal-input" id="addContactInput" type="text" placeholder="e.g. shivam007" autocapitalize="none">
+        <input class="modal-input" id="addContactInput" type="text" placeholder="e.g. shivam007" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="modal-actions">
           <button class="modal-btn ghost" id="cancelAddContact">Cancel</button>
           <button class="modal-btn solid" id="confirmAddContact">Send request</button>
+        </div>
+      </div>
+    </div>
+    <div id="changeUsernameOverlay" class="modal-overlay">
+      <div class="modal">
+        <h3>Change username</h3>
+        <p class="modal-sub">Friends add you with this. 3-20 letters, numbers or underscores.</p>
+        <div class="auth-error" id="changeUsernameError"></div>
+        <input class="modal-input" id="changeUsernameInput" type="text" placeholder="e.g. shivam007" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="modal-actions">
+          <button class="modal-btn ghost" id="cancelChangeUsername">Cancel</button>
+          <button class="modal-btn solid" id="saveChangeUsername">Save</button>
         </div>
       </div>
     </div>
@@ -1240,6 +1253,9 @@
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn('auth persistence not set', err && err.code));
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){}
   const db = firebase.firestore();
+  // Phones/WebViews often block Firestore's default streaming connection, so writes and updates hang.
+  // Long-polling is slower by a hair but works everywhere. Must be set before anything else uses db.
+  try{ db.settings({ experimentalForceLongPolling: true, merge: true }); }catch(e){ console.warn('firestore settings', e); }
   const FieldValue = firebase.firestore.FieldValue;
 
   db.enablePersistence({ synchronizeTabs: true }).catch(err => {
@@ -1640,7 +1656,7 @@
   signOutBtn.addEventListener('click', () => auth.signOut());
 
   // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
-  const APP_VERSION = 'v35 · 17 Oct 2026';
+  const APP_VERSION = 'v38 · 17 Oct 2026';
   document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
   document.getElementById('refreshAppBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshAppBtn');
@@ -3505,7 +3521,9 @@
     if(uname.indexOf('/') !== -1){ fail('Usernames only use letters, numbers and underscores.'); return; }
     if(!myProfile || !myProfile.username){ fail('Your profile is still loading. Wait a few seconds and try again.'); return; }
     confirmAddContact.disabled = true; confirmAddContact.textContent = 'Sending…';
+    let stage = 'finding the username';
     const work = lookupUidByUsername(uname).then(theirUid => {
+      stage = 'sending the request';
       if(!theirUid){ fail('No one has the username "' + uname + '". Check the spelling.'); return; }
       if(theirUid === myUid){ fail("That's your own username."); return; }
       if(users[theirUid]){ fail('@' + uname + ' is already in your contacts.'); return; }
@@ -3527,7 +3545,56 @@
     });
     withTimeout(work, 15000).catch(err => {
       console.error('add contact failed', err);
-      fail(err && err.code === 'timeout' ? 'No reply from the server. Check your internet, then try again.' : friendlyErr(err));
+      fail(err && err.code === 'timeout' ? 'Stuck while ' + stage + ' (no reply from the server in 15s). Check internet / Firestore rules, then try again.' : friendlyErr(err) + ' [' + stage + ']');
+    });
+  });
+
+
+  // ---- Change username (releases the old name, claims the new one in one step) ----
+  const changeUsernameOverlay = document.getElementById('changeUsernameOverlay');
+  const changeUsernameInput = document.getElementById('changeUsernameInput');
+  const changeUsernameError = document.getElementById('changeUsernameError');
+  const saveChangeUsername = document.getElementById('saveChangeUsername');
+  document.getElementById('changeUsernameBtn').addEventListener('click', () => {
+    accountMenu.classList.remove('open');
+    changeUsernameInput.value = (myProfile && myProfile.username) || '';
+    changeUsernameError.classList.remove('show');
+    saveChangeUsername.disabled = false; saveChangeUsername.textContent = 'Save';
+    changeUsernameOverlay.classList.add('open');
+    setTimeout(() => { changeUsernameInput.focus(); changeUsernameInput.select(); }, 50);
+  });
+  document.getElementById('cancelChangeUsername').addEventListener('click', () => changeUsernameOverlay.classList.remove('open'));
+  changeUsernameOverlay.addEventListener('click', (e) => { if(e.target === changeUsernameOverlay) changeUsernameOverlay.classList.remove('open'); });
+  changeUsernameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') saveChangeUsername.click(); });
+  saveChangeUsername.addEventListener('click', () => {
+    if(saveChangeUsername.disabled) return;
+    const next = changeUsernameInput.value.trim().toLowerCase().replace(/^@+/, '');
+    const old = (myProfile && myProfile.username) || '';
+    const idle = () => { saveChangeUsername.disabled = false; saveChangeUsername.textContent = 'Save'; };
+    const fail = (m) => { changeUsernameError.textContent = m; changeUsernameError.classList.add('show'); idle(); };
+    changeUsernameError.classList.remove('show');
+    if(!validUsername(next)){ fail('Use 3-20 letters, numbers or underscores only.'); return; }
+    if(next === old){ changeUsernameOverlay.classList.remove('open'); return; }
+    saveChangeUsername.disabled = true; saveChangeUsername.textContent = 'Saving…';
+    const work = db.collection('usernames').doc(next).get().then(doc => {
+      if(doc.exists && (doc.data() || {}).uid !== myUid){ fail('"' + next + '" is already taken. Try another.'); return; }
+      const batch = db.batch();
+      if(!doc.exists) batch.set(db.collection('usernames').doc(next), { uid: myUid });
+      batch.set(db.collection('users').doc(myUid), { username: next }, { merge: true });
+      if(old) batch.delete(db.collection('usernames').doc(old));
+      return batch.commit().then(() => {
+        myProfile.username = next;
+        menuUsername.textContent = '@' + next;
+        menuUsername.classList.add('copyable');
+        idle(); changeUsernameOverlay.classList.remove('open');
+        showToast('Username is now @' + next);
+      });
+    });
+    withTimeout(work, 15000).catch(err => {
+      console.error('change username failed', err);
+      fail(err && err.code === 'timeout' ? 'No reply from the server. Check your internet and try again.'
+        : err && err.code === 'permission-denied' ? 'Blocked by Firestore rules. Publish the latest firestore.rules (it now allows changing usernames).'
+        : friendlyErr(err));
     });
   });
 
