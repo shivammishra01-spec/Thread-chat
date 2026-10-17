@@ -451,6 +451,8 @@
     background:none; border:1px solid var(--line); color: var(--amber);
     font-size:13px; font-weight:600; cursor:pointer;
   }
+  .toast{ position:fixed; left:50%; bottom:28px; transform:translate(-50%,12px); opacity:0; pointer-events:none; background: var(--panel-2); border:1px solid var(--line); color: var(--ink); padding:10px 16px; border-radius:12px; font-size:13.5px; z-index:260; transition: opacity .2s, transform .2s; max-width:88vw; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
   .app-version{ font-size:11px; color: var(--ink-faint); text-align:center; margin-top:10px; }
   .menu-btn:hover{ background: rgba(232,163,61,0.08); }
   .menu-btn.remove{ color: var(--ink-dim); }
@@ -1632,7 +1634,7 @@
   signOutBtn.addEventListener('click', () => auth.signOut());
 
   // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
-  const APP_VERSION = 'v31 · 15 Oct 2026';
+  const APP_VERSION = 'v32 · 17 Oct 2026';
   document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
   document.getElementById('refreshAppBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshAppBtn');
@@ -1681,6 +1683,7 @@
   const stvBody = document.getElementById('stvBody');
   const stvCap = document.getElementById('stvCap');
 
+  let statusListenError = '';   // shown inside "My status" when statuses can't be loaded (e.g. rules not published)
   function statusCol(uid){ return db.collection('users').doc(uid).collection('statuses'); }
   function isActiveStatus(s){ return !!s && s.exp > Date.now(); }
   function parseStatus(doc, uid){
@@ -1736,9 +1739,14 @@
     seenCache = null;
     if(myStatusUnsub){ myStatusUnsub(); myStatusUnsub = null; }
     myStatusUnsub = statusQuery(myUid).onSnapshot(snap => {
+      statusListenError = '';
       myStatuses = snap.docs.map(d => parseStatus(d, myUid)).filter(Boolean);
       renderStatusUI();
-    }, err => console.warn('my status listener error', err));
+    }, err => {
+      console.warn('my status listener error', err);
+      statusListenError = friendlyErr(err);
+      renderStatusUI();
+    });
     // tidy up my own expired statuses
     statusCol(myUid).where('expiresAt', '<=', Date.now()).get().then(snap => {
       if(snap.empty) return;
@@ -1820,7 +1828,7 @@
         aboutSave.textContent = 'Saved ✓';
         setTimeout(() => { aboutSave.textContent = 'Save'; }, 1400);
       })
-      .catch(err => { console.error('about save failed', err); alert("Couldn't save your status. Please try again."); })
+      .catch(err => { console.error('about save failed', err); alert(friendlyErr(err)); })
       .then(() => { aboutSave.disabled = false; });
   }
   aboutSave.addEventListener('click', () => saveAbout(aboutInput.value.trim().slice(0, 80)));
@@ -1832,6 +1840,12 @@
   }
   function renderMyStatusList(){
     myStList.innerHTML = '';
+    if(statusListenError){
+      const warn = document.createElement('p');
+      warn.className = 'backup-msg show bad';
+      warn.textContent = 'Status is not working yet: ' + statusListenError;
+      myStList.appendChild(warn);
+    }
     const list = myStatuses.filter(isActiveStatus);
     if(list.length === 0){
       const p = document.createElement('p');
@@ -1866,7 +1880,7 @@
   }
   function deleteMyStatus(id){
     if(!confirm('Delete this status?')) return Promise.resolve();
-    return statusCol(myUid).doc(id).delete().catch(err => { console.error('status delete failed', err); alert("Couldn't delete the status."); });
+    return statusCol(myUid).doc(id).delete().catch(err => { console.error('status delete failed', err); alert(friendlyErr(err)); });
   }
   document.getElementById('myStClose').addEventListener('click', () => myStatusOverlay.classList.remove('open'));
   myStatusOverlay.addEventListener('click', (e) => { if(e.target === myStatusOverlay) myStatusOverlay.classList.remove('open'); });
@@ -1933,7 +1947,7 @@
     stPost.disabled = true;
     statusCol(myUid).add(data)
       .then(() => { stComposeOverlay.classList.remove('open'); stDraft = null; })
-      .catch(err => { console.error('status post failed', err); showStMsg("Couldn't post. Check your connection and try again."); })
+      .catch(err => { console.error('status post failed', err); showStMsg(friendlyErr(err)); })
       .then(() => { stPost.disabled = false; });
   });
 
@@ -3412,47 +3426,59 @@
   addContactOverlay.addEventListener('click', (e) => { if(e.target === addContactOverlay) closeAddContact(); });
   addContactInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') confirmAddContact.click(); });
 
+  // Readable messages for the errors people actually hit
+  function friendlyErr(err){
+    const code = err && err.code;
+    if(code === 'permission-denied') return "Firestore rules are blocking this. Publish the latest firestore.rules in Firebase Console (Firestore Database, then Rules).";
+    if(code === 'unavailable') return 'No connection. Check your internet and try again.';
+    return (err && err.message) || 'Something went wrong. Please try again.';
+  }
+  let toastTimer = null;
+  function showToast(msg){
+    let el = document.getElementById('toast');
+    if(!el){ el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // The username can be typed as "Shivam007", "@shivam007" or " shivam007 ": all mean the same person.
+  function lookupUidByUsername(uname){
+    return db.collection('usernames').doc(uname).get().then(doc => {
+      const found = doc.exists ? (doc.data() || {}).uid : null;
+      if(found) return found;
+      // older accounts may have no "usernames" entry, so also look at the profiles themselves
+      return db.collection('users').where('username', '==', uname).limit(1).get()
+        .then(snap => snap.empty ? null : snap.docs[0].id)
+        .catch(() => null);
+    });
+  }
+
   confirmAddContact.addEventListener('click', () => {
-    const uname = addContactInput.value.trim().toLowerCase();
+    const uname = addContactInput.value.trim().toLowerCase().replace(/^@+/, '').replace(/\s+/g, '');
+    const fail = (msg) => { addContactError.textContent = msg; addContactError.classList.add('show'); confirmAddContact.disabled = false; };
     addContactError.classList.remove('show');
-    if(!uname){ addContactError.textContent = 'Enter a username.'; addContactError.classList.add('show'); return; }
+    if(!uname){ fail('Enter a username.'); return; }
+    if(uname.indexOf('/') !== -1){ fail('Usernames only use letters, numbers and underscores.'); return; }
     confirmAddContact.disabled = true;
-    db.collection('usernames').doc(uname).get()
-      .then(doc => {
-        if(!doc.exists){
-          addContactError.textContent = "No one has that username.";
-          addContactError.classList.add('show');
-          confirmAddContact.disabled = false;
-          return;
-        }
-        const theirUid = doc.data().uid;
-        if(theirUid === myUid){
-          addContactError.textContent = "That's your own username.";
-          addContactError.classList.add('show');
-          confirmAddContact.disabled = false;
-          return;
-        }
-        const reqData = {
-          fromUid: myUid,
-          fromName: myProfile.name,
-          fromUsername: myProfile.username,
-          sentAt: FieldValue.serverTimestamp()
-        };
-        if(myProfile.photo) reqData.fromPhoto = myProfile.photo;
-        db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set(reqData).then(() => {
-          confirmAddContact.disabled = false;
-          closeAddContact();
-        }).catch(err => {
-          addContactError.textContent = err.message;
-          addContactError.classList.add('show');
-          confirmAddContact.disabled = false;
-        });
-      })
-      .catch(err => {
-        addContactError.textContent = err.message;
-        addContactError.classList.add('show');
+    lookupUidByUsername(uname).then(theirUid => {
+      if(!theirUid){ fail('No one has the username "' + uname + '". Check the spelling.'); return; }
+      if(theirUid === myUid){ fail("That's your own username."); return; }
+      if(users[theirUid]){ fail('@' + uname + ' is already in your contacts.'); return; }
+      const reqData = {
+        fromUid: myUid,
+        fromName: myProfile.name,
+        fromUsername: myProfile.username,
+        sentAt: FieldValue.serverTimestamp()
+      };
+      if(myProfile.photo) reqData.fromPhoto = myProfile.photo;
+      return db.collection('users').doc(theirUid).collection('incomingRequests').doc(myUid).set(reqData).then(() => {
         confirmAddContact.disabled = false;
+        closeAddContact();
+        showToast('Request sent to @' + uname);
       });
+    }).catch(err => { console.error('add contact failed', err); fail(friendlyErr(err)); });
   });
 
   // ---- Accepting/declining incoming contact requests ----
