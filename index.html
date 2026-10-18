@@ -1656,7 +1656,7 @@
   signOutBtn.addEventListener('click', () => auth.signOut());
 
   // ---- App version + manual refresh (clears the app's cached files only; login and chat keys stay) ----
-  const APP_VERSION = 'v38 · 17 Oct 2026';
+  const APP_VERSION = 'v39 · 18 Oct 2026';
   document.getElementById('appVersion').textContent = 'Thread ' + APP_VERSION;
   document.getElementById('refreshAppBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshAppBtn');
@@ -3733,12 +3733,33 @@
   // Firestore). Each pair of people in a call has its own direct
   // connection; there's no media server relaying video.
   // ==============================================================
-  const ICE_SERVERS = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
-  };
+  // Calls between two phones on different networks (mobile data, home wifi) need a TURN relay;
+  // STUN alone only works on some networks. To get a reliable one for free:
+  //   1) sign up at https://www.metered.ca (free plan), create an app, open "TURN Server" -> copy the
+  //      credentials URL, which looks like https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=XXXX
+  //   2) paste it between the quotes below, and re-upload index.html.
+  const TURN_CREDENTIALS_URL = '';
+  const BASE_ICE = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ];
+  // Public fallback relay (shared, may be slow or limited; your own key above is better)
+  const FALLBACK_TURN = [
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ];
+  let iceConfig = { iceServers: BASE_ICE.concat(FALLBACK_TURN) };
+  function loadIceServers(){
+    if(!TURN_CREDENTIALS_URL) return Promise.resolve();
+    const ctrl = ('AbortController' in window) ? new AbortController() : null;
+    const t = setTimeout(() => { if(ctrl) ctrl.abort(); }, 4000);
+    return fetch(TURN_CREDENTIALS_URL, ctrl ? { signal: ctrl.signal } : {})
+      .then(r => r.json())
+      .then(list => { clearTimeout(t); if(Array.isArray(list) && list.length) iceConfig = { iceServers: BASE_ICE.concat(list) }; })
+      .catch(() => { clearTimeout(t); });
+  }
 
   let currentRoomId = null;
   let currentRoomType = 'audio';
@@ -3775,11 +3796,11 @@
           // just quietly clean it up.
           roomRef(roomId).get().then(roomDoc => {
             const rd = roomDoc.data();
-            const ageMs = rd && rd.createdAt && rd.createdAt.toMillis ? (Date.now() - rd.createdAt.toMillis()) : Infinity;
-            const isStale = !rd || rd.status !== 'active' || ageMs > 2 * 60 * 1000;
+            const ageMs = rd && rd.createdAt && rd.createdAt.toMillis ? (Date.now() - rd.createdAt.toMillis()) : 0;
+            const isStale = !rd || rd.status !== 'active' || ageMs > 5 * 60 * 1000;
             if(isStale){
               inviteRef.delete().catch(() => {});
-              if(rd && rd.status === 'active' && ageMs > 2 * 60 * 1000){
+              if(rd && rd.status === 'active' && ageMs > 5 * 60 * 1000){
                 roomRef(roomId).set({ status: 'ended' }, { merge: true }).catch(() => {});
               }
               return;
@@ -3860,11 +3881,11 @@
         participants: currentRoomParticipants, createdAt: FieldValue.serverTimestamp()
       }));
       return Promise.all(writes);
-    }).then(() => getLocalMedia(type)).then(() => {
+    }).then(() => Promise.all([getLocalMedia(type), loadIceServers()])).then(() => {
       joinRoomConnections();
     }).catch(err => {
       console.error('start call failed', err);
-      alert("Couldn't start the call — check camera/microphone permission.");
+      alert(mediaErrorText(err));
       cleanupCall();
     });
   }
@@ -3882,11 +3903,11 @@
 
     db.collection('users').doc(myUid).collection('callInvites').doc(call.roomId).delete().catch(() => {});
 
-    getLocalMedia(call.type).then(() => {
+    Promise.all([getLocalMedia(call.type), loadIceServers()]).then(() => {
       joinRoomConnections();
     }).catch(err => {
       console.error('accept call failed', err);
-      alert("Couldn't join the call — check camera/microphone permission.");
+      alert(mediaErrorText(err));
       cleanupCall();
     });
   }
@@ -3900,9 +3921,31 @@
     cleanupCall();
   }
 
+  function mediaErrorText(err){
+    const n = err && err.name;
+    if(n === 'NotAllowedError' || n === 'SecurityError') return 'Camera/microphone is blocked. Allow it in the browser or phone settings for this site, then try again.';
+    if(n === 'NotFoundError') return 'No camera or microphone found on this device.';
+    if(n === 'NotReadableError') return 'The camera or microphone is being used by another app. Close it and try again.';
+    return 'Could not open the camera/microphone (' + (n || 'error') + ').';
+  }
   function getLocalMedia(type){
-    return navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' })
-      .then(stream => { localStream = stream; localVideo.srcObject = stream; });
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      return Promise.reject({ name: 'SecurityError' });
+    }
+    const set = (stream) => { localStream = stream; localVideo.srcObject = stream; };
+    const videoOpts = { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } };
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' ? videoOpts : false })
+      .then(set)
+      .catch(err => {
+        // camera failed but the call can still go ahead as voice
+        if(type === 'video' && err && err.name !== 'NotAllowedError'){
+          return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(st => {
+            set(st); camOn = false; toggleCamBtn.classList.add('active-off');
+            showToast('Camera not available, continuing with voice only.');
+          });
+        }
+        throw err;
+      });
   }
 
   let inCallStarted = false;
@@ -3914,7 +3957,7 @@
       updateGridLayout();
     });
 
-    roomRef(currentRoomId).collection('joined').doc(myUid).set({ at: FieldValue.serverTimestamp() });
+    roomRef(currentRoomId).collection('joined').doc(myUid).set({ at: FieldValue.serverTimestamp() }).catch(err => { console.error('join failed', err); callStatus.textContent = friendlyErr(err); });
     joinedUnsub = roomRef(currentRoomId).collection('joined').onSnapshot(snap => {
       snap.docChanges().forEach(change => {
         const otherUid = change.doc.id;
@@ -3924,8 +3967,7 @@
         if(!inCallStarted){
           inCallStarted = true;
           callOverlay.classList.add('in-call');
-          callStatus.textContent = '00:00';
-          startCallTimer();
+          callStatus.textContent = 'Connecting…';
         }
       });
     });
@@ -3934,7 +3976,7 @@
   // ---- Building the direct connection to one other person in the call ----
   function connectToPeer(otherUid){
     const iAmInitiator = myUid < otherUid; // simple, consistent tie-break rule
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection(iceConfig);
     peers[otherUid] = { pc, unsub: null };
 
     if(localStream){ localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); }
@@ -3948,7 +3990,7 @@
         const videoEl = tile.querySelector('video');
         if(videoEl.srcObject !== e.streams[0]){
           videoEl.srcObject = e.streams[0];
-          videoEl.play().catch(() => {});
+          videoEl.play().catch(() => { tile.addEventListener('click', () => videoEl.play().catch(() => {}), { once: true }); });
         }
       } else {
         addRemoteTile(otherUid, e.streams[0]);
@@ -3959,7 +4001,29 @@
     const myCandidates = pRef.collection(iAmInitiator ? 'callerCandidates' : 'calleeCandidates');
     const theirCandidates = pRef.collection(iAmInitiator ? 'calleeCandidates' : 'callerCandidates');
 
-    pc.onicecandidate = (e) => { if(e.candidate) myCandidates.add(e.candidate.toJSON()); };
+    pc.onicecandidate = (e) => { if(e.candidate) myCandidates.add(e.candidate.toJSON()).catch(() => {}); };
+
+    let connectedOnce = false, failTimer = null;
+    pc.oniceconnectionstatechange = () => {
+      const st = pc.iceConnectionState;
+      if(st === 'connected' || st === 'completed'){
+        clearTimeout(failTimer);
+        if(!connectedOnce){ connectedOnce = true; if(!callTimerInterval) startCallTimer(); }
+      } else if(st === 'disconnected'){
+        if(!callTimerInterval) callStatus.textContent = 'Reconnecting…';
+        clearTimeout(failTimer);
+        failTimer = setTimeout(() => { if(pc.iceConnectionState === 'disconnected' && pc.restartIce) pc.restartIce(); }, 4000);
+      } else if(st === 'failed'){
+        if(pc.restartIce){ try{ pc.restartIce(); }catch(e){} }
+        if(!connectedOnce) callStatus.textContent = 'Could not connect. Network is blocking the call (a TURN server is needed).';
+      }
+    };
+    // never leave "Connecting…" hanging forever without saying why
+    setTimeout(() => {
+      if(!connectedOnce && peers[otherUid] && peers[otherUid].pc === pc){
+        callStatus.textContent = 'Still connecting… if this stays, both phones need a TURN server (see app setup).';
+      }
+    }, 20000);
 
     // A candidate can arrive from Firestore before the remote description is
     // set (addIceCandidate would fail if we tried right away), so queue any
@@ -4034,7 +4098,7 @@
     `;
     const videoEl = tile.querySelector('video');
     videoEl.srcObject = stream;
-    videoEl.play().catch(() => {});
+    videoEl.play().catch(() => { tile.addEventListener('click', () => videoEl.play().catch(() => {}), { once: true }); });
     videoEl.addEventListener('loadedmetadata', () => {
       const hasVideo = stream.getVideoTracks().length > 0;
       tile.querySelector('.tile-avatar').style.display = hasVideo ? 'none' : 'flex';
