@@ -2584,13 +2584,23 @@
   let myContactMeta = {};    // contactUid -> {muted: bool}
   let statusTicker = null;
 
+  // If Firebase is slow to answer, keep the loading animation and add a gentle hint + retry button
+  // (the loader itself is never replaced, so the user is never left on a blank error screen).
   setTimeout(() => {
-    if(authLoading.style.display !== 'none'){
-      authLoading.textContent = "Thoda wait karein… internet check karke page reload karein.";
-      authLoading.style.padding = '30px';
-      authLoading.style.textAlign = 'center';
+    if(authLoading.style.display === 'none') return;
+    const sub = authLoading.querySelector('.ld-sub');
+    if(sub) sub.textContent = 'Thoda time lag raha hai… internet check karein.';
+    const wrap = authLoading.querySelector('.loading-wrap');
+    if(wrap && !document.getElementById('loaderRetryBtn')){
+      const btn = document.createElement('button');
+      btn.id = 'loaderRetryBtn';
+      btn.className = 'auth-submit';
+      btn.style.maxWidth = '200px';
+      btn.textContent = 'Retry';
+      btn.addEventListener('click', () => window.location.reload());
+      wrap.appendChild(btn);
     }
-  }, 6000);
+  }, 8000);
 
   // ---- Online/offline/away status helpers ----
   function isOnline(lastActiveMs){ return lastActiveMs && (Date.now() - lastActiveMs) < 60000; }
