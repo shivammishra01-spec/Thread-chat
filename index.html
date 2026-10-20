@@ -2636,6 +2636,16 @@
     authLoading.innerHTML = '<div style="padding:30px;text-align:center;line-height:1.6;">Couldn\'t reach the server.<br>You are still signed in.<br><br><button class="auth-submit" id="routeRetryBtn" style="max-width:200px;">Try again</button></div>';
     document.getElementById('routeRetryBtn').addEventListener('click', () => window.location.reload());
   }
+  // Last known profile for this account, kept on this device so the app can open offline.
+  function saveCachedProfile(uid, data){
+    try{ localStorage.setItem('thread_profile_' + uid, JSON.stringify(data)); }catch(e){}
+  }
+  function readCachedProfile(uid){
+    try{
+      const d = JSON.parse(localStorage.getItem('thread_profile_' + uid) || 'null');
+      return d && d.username ? d : null;
+    }catch(e){ return null; }
+  }
   function routeAfterAuth(user, attempt){
     attempt = attempt || 0;
     return db.collection('users').doc(user.uid).get().then(doc => {
@@ -2644,6 +2654,7 @@
         authScreen.style.display = 'none';
         usernameScreen.style.display = 'none';
         app.style.display = 'grid';
+        saveCachedProfile(user.uid, doc.data());
         startApp(user, doc.data());
       } else if(doc.exists){
         authScreen.style.display = 'none';
@@ -2658,6 +2669,17 @@
       console.error('profile check failed', err);
       // A shaky connection must never look like "you were logged out": stay signed in and retry.
       if(!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+      // Offline (or server unreachable) and we have this account's profile saved on this device:
+      // open the app now. Firestore syncs everything again once the connection is back.
+      const cachedProfile = readCachedProfile(user.uid);
+      if(cachedProfile){
+        authLoading.style.display = 'none';
+        authScreen.style.display = 'none';
+        usernameScreen.style.display = 'none';
+        app.style.display = 'grid';
+        startApp(user, cachedProfile);
+        return;
+      }
       if(attempt < 6){
         authLoading.style.display = 'flex';
         clearTimeout(routeRetryTimer);
